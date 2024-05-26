@@ -22,14 +22,18 @@ class Preprocessing:
         for author in authors:
             author_info = DataRetriever.get_author_info_from_dbpedia(author)
 
+            author_info_row = {
+                'author': author,
+                'birthDate': None,
+                'deathDate': None,
+            }
+
             if author_info:
                 author_info = author_info['results']['bindings']
-                author_info_row = {
-                    'author': author,
-                    'birthDate': author_info['birthDate']['value'] if 'birthDate' in author_info else None,
-                    'deathDate': author_info['deathDate']['value'] if 'deathDate' in author_info else None
-                }
-                author_info_df = author_info_df.append(author_info_row, ignore_index=True)
+                author_info_row['birthDate'] = author_info['birthDate']['value']
+                author_info_row['deathDate'] = author_info['deathDate']['value']
+
+            author_info_df = author_info_df.append(author_info_row, ignore_index=True)
 
         return author_info_df
 
