@@ -24,13 +24,19 @@ class DataRetriever:
             return False
 
     @staticmethod
-    def get_json_from_title_and_author(title: str, author: str):
+    def get_json_from_title_and_author(title: str, author: str | None):
         try:
             base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
-            params: dict[str, str] = {
-                'q':       f"intitle:{title}+inauthor:{author}",
-                'country': 'US'
-            }
+            if author is None:
+                params: dict[str, str] = {
+                    'q':       f"intitle:{title}",
+                    'country': 'US'
+                }
+            else:
+                params: dict[str, str] = {
+                    'q':       f"intitle:{title}+inauthor:{author}",
+                    'country': 'US'
+                }
 
             response: Response = requests.get(base_api_link, params=params)
             if response.status_code != 200:

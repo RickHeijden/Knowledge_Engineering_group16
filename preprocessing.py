@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from data_retriever import DataRetriever
 
 
@@ -10,7 +11,11 @@ class Preprocessing:
         self.__df = df
 
     def process(self) -> None:
-        self.__df = self.__df.apply(self.__process_row)
+        for column in self.__COLUMNS__:
+            if column not in self.__df.columns:
+                self.__df[column] = None
+
+        self.__df = self.__df.apply(self.__process_row, axis=1)
 
     def get_df(self) -> pd.DataFrame:
         return self.__df
@@ -71,15 +76,21 @@ class Preprocessing:
         return self.__df['author'].unique()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
-        if row['isbn13'] is None or row['isbn10'] is None:
-            data: dict | None = DataRetriever.get_json_from_title_and_author(row['title'], row['author'])
-            industry_identifiers: list[dict[str, str]] = data[0]['volumeInfo']['industryIdentifiers']
+        if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
+            author = row['author']
+            if str(author) == 'nan':
+                author = None
+
+            data: dict | None = DataRetriever.get_json_from_title_and_author(row['title'], author)
+            industry_identifiers: list[dict[str, str]] = data['items'][0]['volumeInfo']['industryIdentifiers']
 
             row['isbn13'] = [
-                identifier['isbn13'] for identifier in industry_identifiers if identifier['type'] == 'isbn13'
+                identifier['identifier'] for identifier in industry_identifiers
+                if identifier['type'].lower() == 'isbn_13'
             ][0]
             row['isbn10'] = [
-                identifier['isbn10'] for identifier in industry_identifiers if identifier['type'] == 'isbn10'
+                identifier['identifier'] for identifier in industry_identifiers
+                if identifier['type'].lower() == 'isbn_10'
             ][0]
 
         data: dict | None = None
@@ -102,11 +113,23 @@ class Preprocessing:
 
                     data = DataRetriever.get_json_from_isbn(isbn)
 
-                volume_info: dict = data[0]['volumeInfo']
+                print(data)
+                volume_info: dict = data['items'][0]['volumeInfo']
 
                 if search == 'author':
                     row[column] = volume_info[search][0]
                 else:
-                    row[column] = volume_info[search]
+                    if search in volume_info:
+                        row[column] = volume_info[search]
 
         return row
+
+
+if __name__ == '__main__':
+    df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
+    preprocessing: Preprocessing = Preprocessing(df)
+    preprocessing.process()
+    preprocessing.save_author_info('datasets/author_info.csv')
+    df = preprocessing.get_df()
+    df.to_csv('datasets/processed.csv')
+    print(df)
