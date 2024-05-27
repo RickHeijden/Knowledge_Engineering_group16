@@ -3,11 +3,6 @@ from ConvertJSONToCSV import json_to_csv
 from Utils import explore_csv_headers, check_duplicate_titles, check_num_of_rows
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
 # 1) Convert the fourth dataset from JSON file to CSV
 # 2) Explore the csv headers
 # 3) Combine the 4 CSV files into a single CSV file
