@@ -16,7 +16,16 @@ class Preprocessing:
         return self.__df
 
     def create_author_info(self) -> pd.DataFrame:
-        author_info_df: pd.DataFrame = pd.DataFrame(columns=['author', 'birthDate', 'deathDate'])
+        author_info_df: pd.DataFrame = pd.DataFrame(columns=[
+            'author',
+            'birthDate',
+            'birthPlace',
+            'birthCountries',
+            'deathDate',
+            'genres',
+            'influenced',
+            'influencedBy',
+        ])
         authors: list[str] = self.get_authors()
 
         for author in authors:
@@ -25,13 +34,30 @@ class Preprocessing:
             author_info_row: dict[str, str | None] = {
                 'author': author,
                 'birthDate': None,
+                'birthPlace': None,
+                'birthCountries': None,
                 'deathDate': None,
+                'genres': None,
+                'influenced': None,
+                'influencedBy': None,
             }
 
             if author_info:
                 author_info = author_info['results']['bindings']
-                author_info_row['birthDate'] = author_info['birthDate']['value']
-                author_info_row['deathDate'] = author_info['deathDate']['value']
+                if author_info['birthDate']:
+                    author_info_row['birthDate'] = author_info['birthDate']['value']
+                if author_info['birthPlace']:
+                    author_info_row['birthPlace'] = author_info['birthPlace']['value']
+                if author_info['birthCountries']:
+                    author_info_row['birthCountries'] = author_info['birthCountries']['value']
+                if author_info['deathDate']:
+                    author_info_row['deathDate'] = author_info['deathDate']['value']
+                if author_info['genres']:
+                    author_info_row['genres'] = author_info['genres']['value']
+                if author_info['influenced']:
+                    author_info_row['influenced'] = author_info['influenced']['value']
+                if author_info['influencedBy']:
+                    author_info_row['influencedBy'] = author_info['influencedBy']['value']
 
             author_info_df = author_info_df.append(author_info_row, ignore_index=True)
 

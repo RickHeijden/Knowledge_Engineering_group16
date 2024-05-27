@@ -50,16 +50,29 @@ class DataRetriever:
 
             # Construct the SPARQL query
             query: str = f"""
-            SELECT ?abstract ?birthDate ?deathDate ?influenced ?influencedBy WHERE {{
+            SELECT
+                ?abstract
+                ?birthDate
+                ?birthPlace
+                (GROUP_CONCAT(DISTINCT ?birthCountry; separator=", ") as ?birthCountries)
+                ?deathDate
+                (GROUP_CONCAT(DISTINCT ?genre; separator=", ") as ?genres)
+                ?influenced
+                ?influencedBy
+            WHERE {{
                 ?author a dbo:Writer ;
                         foaf:name "{author_name}"@en ;
                         dbo:abstract ?abstract .
                 OPTIONAL {{ ?author dbo:birthDate ?birthDate . }}
+                OPTIONAL {{ ?author dbo:birthPlace ?birthPlace . }}
                 OPTIONAL {{ ?author dbo:deathDate ?deathDate . }}
+                OPTIONAL {{ ?author dbo:genre ?genre . }}
                 OPTIONAL {{ ?author dbo:influenced ?influenced . }}
                 OPTIONAL {{ ?author dbo:influencedBy ?influencedBy . }}
+                OPTIONAL {{ ?birthPlace dbo:country ?birthCountry . }}
                 FILTER (lang(?abstract) = 'en')
             }}
+            GROUP BY ?abstract ?birthDate ?birthPlace ?deathDate ?influenced ?influencedBy
             """
 
             # Set the parameters for the request
@@ -79,3 +92,7 @@ class DataRetriever:
             print(f"An error occurred: {e}")
 
             return False
+
+
+if __name__ == '__main__':
+    print(DataRetriever.get_author_info_from_dbpedia("J. K. Rowling"))
