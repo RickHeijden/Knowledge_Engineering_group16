@@ -82,16 +82,24 @@ class Preprocessing:
                 author = None
 
             data: dict | None = DataRetriever.get_json_from_title_and_author(row['title'], author)
-            industry_identifiers: list[dict[str, str]] = data['items'][0]['volumeInfo']['industryIdentifiers']
+            if isinstance(data, dict):
+                industry_identifiers: list[dict[str, str]] = (
+                    data.get('items', [{}])[0].get('volumeInfo', {}).get('industryIdentifiers', [])
+                )
+            else:
+                industry_identifiers: list[dict[str, str]] = []
 
-            row['isbn13'] = [
-                identifier['identifier'] for identifier in industry_identifiers
-                if identifier['type'].lower() == 'isbn_13'
-            ][0]
-            row['isbn10'] = [
-                identifier['identifier'] for identifier in industry_identifiers
-                if identifier['type'].lower() == 'isbn_10'
-            ][0]
+            row['isbn13'] = next(
+                (identifier['identifier'] for identifier in industry_identifiers if
+                 identifier['type'].lower() == 'isbn_13'),
+                None
+            )
+
+            row['isbn10'] = next(
+                (identifier['identifier'] for identifier in industry_identifiers if
+                 identifier['type'].lower() == 'isbn_10'),
+                None
+            )
 
         data: dict | None = None
 
@@ -114,7 +122,16 @@ class Preprocessing:
                     data = DataRetriever.get_json_from_isbn(isbn)
 
                 print(data)
-                volume_info: dict = data['items'][0]['volumeInfo']
+                # Check if 'data' is a dictionary
+                if isinstance(data, dict):
+                    # Check if we have 'items' attribute in the data
+                    if 'items' in data and isinstance(data['items'], list) and len(data['items']) > 0:
+                        # Safely get volumeInfo
+                        volume_info: dict = data['items'][0].get('volumeInfo', {})
+                    else:
+                        continue
+                else:
+                    continue
 
                 if search == 'author':
                     row[column] = volume_info[search][0]
@@ -129,7 +146,7 @@ if __name__ == '__main__':
     df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
     preprocessing: Preprocessing = Preprocessing(df)
     preprocessing.process()
-    preprocessing.save_author_info('datasets/author_info.csv')
     df = preprocessing.get_df()
     df.to_csv('datasets/processed.csv')
+    preprocessing.save_author_info('datasets/author_info.csv')
     print(df)
