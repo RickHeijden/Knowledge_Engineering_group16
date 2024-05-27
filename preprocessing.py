@@ -3,7 +3,7 @@ from data_retriever import DataRetriever
 
 
 class Preprocessing:
-    __COLUMNS__ = ['title', 'author', 'year', 'publisher', 'rating', 'rank', 'categories', 'description']
+    __COLUMNS__: list[str] = ['title', 'author', 'year', 'publisher', 'rating', 'rank', 'categories', 'description']
     __df: pd.DataFrame
 
     def __init__(self, df: pd.DataFrame) -> None:
@@ -16,13 +16,13 @@ class Preprocessing:
         return self.__df
 
     def create_author_info(self) -> pd.DataFrame:
-        author_info_df = pd.DataFrame(columns=['author', 'birthDate', 'deathDate'])
-        authors = self.get_authors()
+        author_info_df: pd.DataFrame = pd.DataFrame(columns=['author', 'birthDate', 'deathDate'])
+        authors: list[str] = self.get_authors()
 
         for author in authors:
-            author_info = DataRetriever.get_author_info_from_dbpedia(author)
+            author_info: dict = DataRetriever.get_author_info_from_dbpedia(author)
 
-            author_info_row = {
+            author_info_row: dict[str, str | None] = {
                 'author': author,
                 'birthDate': None,
                 'deathDate': None,
@@ -38,26 +38,30 @@ class Preprocessing:
         return author_info_df
 
     def save_author_info(self, file_path: str) -> None:
-        author_info_df = self.create_author_info()
+        author_info_df: pd.DataFrame = self.create_author_info()
         author_info_df.to_csv(file_path)
 
-    def get_authors(self):
+    def get_authors(self) -> list[str]:
         return self.__df['author'].unique()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if row['isbn13'] is None or row['isbn10'] is None:
-            data = DataRetriever.get_json_from_title_and_author(row['title'], row['author'])
-            industryIdentifiers: list[dict[str, str]] = data[0]['volumeInfo']['industryIdentifiers']
+            data: dict | None = DataRetriever.get_json_from_title_and_author(row['title'], row['author'])
+            industry_identifiers: list[dict[str, str]] = data[0]['volumeInfo']['industryIdentifiers']
 
-            row['isbn13'] = [identifier['isbn13'] for identifier in industryIdentifiers if identifier['type'] == 'isbn13'][0]
-            row['isbn10'] = [identifier['isbn10'] for identifier in industryIdentifiers if identifier['type'] == 'isbn10'][0]
+            row['isbn13'] = [
+                identifier['isbn13'] for identifier in industry_identifiers if identifier['type'] == 'isbn13'
+            ][0]
+            row['isbn10'] = [
+                identifier['isbn10'] for identifier in industry_identifiers if identifier['type'] == 'isbn10'
+            ][0]
 
-        data = None
+        data: dict | None = None
 
         # Check if any of the __COLUMNS__ are NONE in te row
         for column in self.__COLUMNS__:
             if row[column] is None:
-                search = column
+                search: str = column
                 if search == 'author':
                     search = 'authors'
                 elif search == 'year':
@@ -72,7 +76,7 @@ class Preprocessing:
 
                     data = DataRetriever.get_json_from_isbn(isbn)
 
-                volume_info = data[0]['volumeInfo']
+                volume_info: dict = data[0]['volumeInfo']
 
                 if search == 'author':
                     row[column] = volume_info[search][0]

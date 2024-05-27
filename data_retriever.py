@@ -1,48 +1,55 @@
 import requests
 from requests.exceptions import RequestException
+from requests import Response
 
 
 class DataRetriever:
     @staticmethod
-    def get_json_from_isbn(isbn):
+    def get_json_from_isbn(isbn: str):
         try:
-            base_api_link = "https://www.googleapis.com/books/v1/volumes"
-            params = {
+            base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
+            params: dict[str, str] = {
                 'q':       f"isbn:{isbn}",
                 'country': 'US'
             }
-            response = requests.get(base_api_link, params=params)
+
+            response: Response = requests.get(base_api_link, params=params)
             if response.status_code != 200:
                 return False
+
             return response.json()
         except RequestException as e:
             print(f"An error occurred: {e}")
+
             return False
 
     @staticmethod
-    def get_json_from_title_and_author(title, author):
+    def get_json_from_title_and_author(title: str, author: str):
         try:
-            base_api_link = "https://www.googleapis.com/books/v1/volumes"
-            params = {
+            base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
+            params: dict[str, str] = {
                 'q':       f"intitle:{title}+inauthor:{author}",
                 'country': 'US'
             }
-            response = requests.get(base_api_link, params=params)
+
+            response: Response = requests.get(base_api_link, params=params)
             if response.status_code != 200:
                 return False
+
             return response.json()
         except RequestException as e:
             print(f"An error occurred: {e}")
+
             return False
 
     @staticmethod
-    def get_author_info_from_dbpedia(author_name):
+    def get_author_info_from_dbpedia(author_name: str):
         try:
             # DBpedia SPARQL endpoint
-            endpoint = "https://dbpedia.org/sparql"
+            endpoint: str = "https://dbpedia.org/sparql"
 
             # Construct the SPARQL query
-            query = f"""
+            query: str = f"""
             SELECT ?abstract ?birthDate ?deathDate ?influenced ?influencedBy WHERE {{
                 ?author a dbo:Writer ;
                         foaf:name "{author_name}"@en ;
@@ -56,13 +63,13 @@ class DataRetriever:
             """
 
             # Set the parameters for the request
-            params = {
+            params: dict[str, str] = {
                 'query':  query,
                 'format': 'application/sparql-results+json'
             }
 
             # Make the request to the DBpedia SPARQL endpoint
-            response = requests.get(endpoint, params=params)
+            response: Response = requests.get(endpoint, params=params)
             if response.status_code != 200:
                 return False
 
@@ -70,4 +77,5 @@ class DataRetriever:
             return response.json()
         except RequestException as e:
             print(f"An error occurred: {e}")
+
             return False
