@@ -5,20 +5,22 @@ from data_retriever import DataRetriever
 
 class Preprocessing:
     __COLUMNS__: list[str] = ['title', 'author', 'year', 'publisher', 'rating', 'rank', 'categories', 'description']
-    __df: pd.DataFrame
+    __dataframe: pd.DataFrame
+    __data_retriever: DataRetriever
 
-    def __init__(self, df: pd.DataFrame) -> None:
-        self.__df = df
+    def __init__(self, dataframe: pd.DataFrame) -> None:
+        self.__dataframe = dataframe
+        self.__data_retriever = DataRetriever()
 
     def process(self) -> None:
         for column in self.__COLUMNS__:
-            if column not in self.__df.columns:
-                self.__df[column] = None
+            if column not in self.__dataframe.columns:
+                self.__dataframe[column] = None
 
-        self.__df = self.__df.apply(self.__process_row, axis=1)
+        self.__dataframe = self.__dataframe.apply(self.__process_row, axis=1)
 
     def get_df(self) -> pd.DataFrame:
-        return self.__df
+        return self.__dataframe
 
     def create_author_info(self, path: str) -> None:
         # If file does not exist, create it and add CSV column headers.
@@ -78,7 +80,7 @@ class Preprocessing:
 
             for index, author in enumerate(authors):
                 author = str(author)
-                author_info: dict = DataRetriever.get_author_info_from_dbpedia(author)
+                author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
 
                 author_info_row: dict[str, str | bool | None] = {
                     'author': author.replace(',', ';'),
@@ -134,7 +136,7 @@ class Preprocessing:
                 )
 
     def get_authors(self) -> list[str]:
-        return self.__df['author'].unique()
+        return self.__dataframe['author'].unique()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
@@ -142,7 +144,7 @@ class Preprocessing:
             if str(author) == 'nan':
                 author = None
 
-            data: dict | None = DataRetriever.get_json_from_title_and_author(row['title'], author)
+            data: dict | None = self.__data_retriever.get_json_from_title_and_author(row['title'], author)
 
             if data is None or data['totalItems'] == 0:
                 return row
@@ -183,7 +185,7 @@ class Preprocessing:
                     if isbn is None:
                         isbn = row['isbn10']
 
-                    data = DataRetriever.get_json_from_isbn(isbn)
+                    data = self.__data_retriever.get_json_from_isbn(isbn)
 
                 if data is None:
                     continue

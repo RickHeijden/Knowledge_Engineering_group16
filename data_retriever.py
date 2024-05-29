@@ -1,11 +1,20 @@
 import requests
+import time
 from requests.exceptions import RequestException
 from requests import Response
 
 
 class DataRetriever:
-    @staticmethod
-    def get_json_from_isbn(isbn: str) -> dict | bool:
+    __requests: int
+
+    def __init__(self):
+        self.__requests = 0
+
+    def get_json_from_isbn(self, isbn: str) -> dict | bool:
+        self.__requests += 1
+        if self.__requests % 10 == 0:
+            time.sleep(1)
+
         try:
             base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
             params: dict[str, str] = {
@@ -23,8 +32,11 @@ class DataRetriever:
 
             return False
 
-    @staticmethod
-    def get_json_from_title_and_author(title: str, author: str | None) -> dict | bool:
+    def get_json_from_title_and_author(self, title: str, author: str | None) -> dict | bool:
+        self.__requests += 1
+        if self.__requests % 10 == 0:
+            time.sleep(1)
+
         try:
             base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
             if author is None:
@@ -48,8 +60,11 @@ class DataRetriever:
 
             return False
 
-    @staticmethod
-    def get_books_from_author(author_name: str) -> list:
+    def get_books_from_author(self, author_name: str) -> list:
+        self.__requests += 1
+        if self.__requests % 10 == 0:
+            time.sleep(1)
+
         start_index = 0
         total_items = None
         books = []
@@ -79,8 +94,11 @@ class DataRetriever:
 
             return []
 
-    @staticmethod
-    def get_author_info_from_dbpedia(author_name: str) -> dict | bool:
+    def get_author_info_from_dbpedia(self, author_name: str) -> dict | bool:
+        self.__requests += 1
+        if self.__requests % 100 == 0:
+            time.sleep(1)
+
         try:
             # DBpedia SPARQL endpoint
             endpoint: str = "https://dbpedia.org/sparql"
@@ -129,7 +147,3 @@ class DataRetriever:
             print(f"An error occurred: {e}")
 
             return False
-
-
-if __name__ == '__main__':
-    print(DataRetriever.get_author_info_from_dbpedia("J. K. Rowling"))
