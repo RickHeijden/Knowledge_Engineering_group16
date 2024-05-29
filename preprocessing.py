@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 from data_retriever import DataRetriever
 
 
@@ -19,62 +20,118 @@ class Preprocessing:
     def get_df(self) -> pd.DataFrame:
         return self.__df
 
-    def create_author_info(self) -> pd.DataFrame:
-        authors: list[str] = self.get_authors()
+    def create_author_info(self, path: str) -> None:
+        # If file does not exist, create it and add CSV column headers.
+        if not os.path.exists(path):
+            with open(path, "w") as file:
+                file.write(
+                    ",".join(
+                        [
+                            "author",
+                            "birth_date",
+                            "birth_place",
+                            "birth_countries",
+                            "death_date",
+                            "genres",
+                            "influenced",
+                            "influenced_by",
+                            "properly_processed",
+                        ]
+                    )
+                    + "\n"
+                )
 
-        row_list: list = []
-        for index, author in enumerate(authors):
-            author_info: dict = DataRetriever.get_author_info_from_dbpedia(author)
+        with open(path, "a", buffering=1, encoding="utf-8") as file:
+            def write_line(
+                author_name: str,
+                birth_date: str | None,
+                birth_place: str | None,
+                birth_countries: str | None,
+                death_date: str | None,
+                genres: str | None,
+                influenced: str | None,
+                influenced_by: str | None,
+                properly_processed: bool,
+            ):
+                """Write a line to the CSV file."""
+                file.write(
+                    ",".join(
+                        map(
+                            str,
+                            [
+                                author_name,
+                                birth_date,
+                                birth_place,
+                                birth_countries,
+                                death_date,
+                                genres,
+                                influenced,
+                                influenced_by,
+                                properly_processed,
+                            ],
+                        )
+                    )
+                    + "\n"
+                )
 
-            author_info_row: dict[str, str | bool | None] = {
-                'author': author,
-                'birthDate': None,
-                'birthPlace': None,
-                'birthCountries': None,
-                'deathDate': None,
-                'genres': None,
-                'influenced': None,
-                'influencedBy': None,
-                'properlyProcessed': False,
-            }
+            authors: list[str] = self.get_authors()
 
-            if author_info:
-                author_info = author_info['results']['bindings']
+            for index, author in enumerate(authors):
+                author = str(author)
+                author_info: dict = DataRetriever.get_author_info_from_dbpedia(author)
 
-                if len(author_info) > 0:
-                    author_info = author_info[0]
+                author_info_row: dict[str, str | bool | None] = {
+                    'author': author.replace(',', ';'),
+                    'birthDate': None,
+                    'birthPlace': None,
+                    'birthCountries': None,
+                    'deathDate': None,
+                    'genres': None,
+                    'influenced': None,
+                    'influencedBy': None,
+                    'properlyProcessed': False,
+                }
 
-                    if 'birthDate' in author_info and author_info['birthDate']:
-                        author_info_row['birthDate'] = author_info['birthDate']['value']
+                if author_info:
+                    author_info = author_info['results']['bindings']
 
-                    if 'birthPlace' in author_info and author_info['birthPlace']:
-                        author_info_row['birthPlace'] = author_info['birthPlace']['value']
+                    if len(author_info) > 0:
+                        author_info = author_info[0]
 
-                    if 'birthCountries' in author_info and author_info['birthCountries']:
-                        author_info_row['birthCountries'] = author_info['birthCountries']['value']
+                        if 'birthDate' in author_info and author_info['birthDate']:
+                            author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
 
-                    if 'deathDate' in author_info and author_info['deathDate']:
-                        author_info_row['deathDate'] = author_info['deathDate']['value']
+                        if 'birthPlace' in author_info and author_info['birthPlace']:
+                            author_info_row['birthPlace'] = author_info['birthPlace']['value'].replace(',', ';')
 
-                    if 'genres' in author_info and author_info['genres']:
-                        author_info_row['genres'] = author_info['genres']['value']
+                        if 'birthCountries' in author_info and author_info['birthCountries']:
+                            author_info_row['birthCountries'] = author_info['birthCountries']['value'].replace(',', ';')
 
-                    if 'influenced' in author_info and author_info['influenced']:
-                        author_info_row['influenced'] = author_info['influenced']['value']
+                        if 'deathDate' in author_info and author_info['deathDate']:
+                            author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
 
-                    if 'influencedBy' in author_info and author_info['influencedBy']:
-                        author_info_row['influencedBy'] = author_info['influencedBy']['value']
+                        if 'genres' in author_info and author_info['genres']:
+                            author_info_row['genres'] = author_info['genres']['value'].replace(',', ';')
 
-                    author_info_row['properlyProcessed'] = True
+                        if 'influenced' in author_info and author_info['influenced']:
+                            author_info_row['influenced'] = author_info['influenced']['value'].replace(',', ';')
 
-            row_list.append(author_info_row)
+                        if 'influencedBy' in author_info and author_info['influencedBy']:
+                            author_info_row['influencedBy'] = author_info['influencedBy']['value'].replace(',', ';')
 
-        author_info_df = pd.DataFrame(row_list)
-        return author_info_df
+                        author_info_row['properlyProcessed'] = True
 
-    def save_author_info(self, file_path: str) -> None:
-        author_info_df: pd.DataFrame = self.create_author_info()
-        author_info_df.to_csv(file_path)
+                write_line(
+                    author_info_row['author'],
+                    author_info_row['birthDate'],
+                    author_info_row['birthPlace'],
+                    author_info_row['birthCountries'],
+                    author_info_row['deathDate'],
+                    author_info_row['genres'],
+                    author_info_row['influenced'],
+                    author_info_row['influencedBy'],
+                    author_info_row['properlyProcessed'],
+                )
 
     def get_authors(self) -> list[str]:
         return self.__df['author'].unique()
@@ -148,8 +205,8 @@ class Preprocessing:
 if __name__ == '__main__':
     df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
     preprocessing: Preprocessing = Preprocessing(df)
-    preprocessing.process()
-    df = preprocessing.get_df()
-    df.to_csv('datasets/processed.csv')
-    preprocessing.save_author_info('datasets/author_info.csv')
+    # preprocessing.process()
+    # df = preprocessing.get_df()
+    # df.to_csv('datasets/processed.csv')
+    preprocessing.create_author_info('datasets/author_info.csv')
     print(df)
