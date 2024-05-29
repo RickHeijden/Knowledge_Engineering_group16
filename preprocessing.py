@@ -82,24 +82,27 @@ class Preprocessing:
                 author = None
 
             data: dict | None = DataRetriever.get_json_from_title_and_author(row['title'], author)
-            if isinstance(data, dict):
-                industry_identifiers: list[dict[str, str]] = (
-                    data.get('items', [{}])[0].get('volumeInfo', {}).get('industryIdentifiers', [])
-                )
-            else:
-                industry_identifiers: list[dict[str, str]] = []
 
-            row['isbn13'] = next(
-                (identifier['identifier'] for identifier in industry_identifiers if
-                 identifier['type'].lower() == 'isbn_13'),
-                None
-            )
+            if data is None or data['totalItems'] == 0:
+                return row
 
-            row['isbn10'] = next(
-                (identifier['identifier'] for identifier in industry_identifiers if
-                 identifier['type'].lower() == 'isbn_10'),
-                None
-            )
+            industry_identifiers: list[dict[str, str]] = data['items'][0]['volumeInfo']['industryIdentifiers']
+
+            isbn13 = [
+                identifier['identifier'] for identifier in industry_identifiers
+                if identifier['type'].lower() == 'isbn_13'
+            ]
+
+            if len(isbn13) > 0:
+                row['isbn13'] = isbn13[0]
+
+            isbn10 = [
+                identifier['identifier'] for identifier in industry_identifiers
+                if identifier['type'].lower() == 'isbn_10'
+            ]
+
+            if len(isbn10) > 0:
+                row['isbn10'] = isbn10[0]
 
         data: dict | None = None
 
@@ -121,15 +124,11 @@ class Preprocessing:
 
                     data = DataRetriever.get_json_from_isbn(isbn)
 
-                print(data)
-                # Check if 'data' is a dictionary
-                if isinstance(data, dict):
-                    # Check if we have 'items' attribute in the data
-                    if 'items' in data and isinstance(data['items'], list) and len(data['items']) > 0:
-                        # Safely get volumeInfo
-                        volume_info: dict = data['items'][0].get('volumeInfo', {})
-                    else:
-                        continue
+                if data is None:
+                    continue
+
+                if data['totalItems'] > 0:
+                    volume_info: dict = data['items'][0]['volumeInfo']
                 else:
                     continue
 
