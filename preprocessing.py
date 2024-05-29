@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from data_retriever import DataRetriever
 
 
@@ -21,22 +20,13 @@ class Preprocessing:
         return self.__df
 
     def create_author_info(self) -> pd.DataFrame:
-        author_info_df: pd.DataFrame = pd.DataFrame(columns=[
-            'author',
-            'birthDate',
-            'birthPlace',
-            'birthCountries',
-            'deathDate',
-            'genres',
-            'influenced',
-            'influencedBy',
-        ])
         authors: list[str] = self.get_authors()
 
-        for author in authors:
+        row_list: list = []
+        for index, author in enumerate(authors):
             author_info: dict = DataRetriever.get_author_info_from_dbpedia(author)
 
-            author_info_row: dict[str, str | None] = {
+            author_info_row: dict[str, str | bool | None] = {
                 'author': author,
                 'birthDate': None,
                 'birthPlace': None,
@@ -45,27 +35,41 @@ class Preprocessing:
                 'genres': None,
                 'influenced': None,
                 'influencedBy': None,
+                'properlyProcessed': False,
             }
 
             if author_info:
                 author_info = author_info['results']['bindings']
-                if author_info['birthDate']:
-                    author_info_row['birthDate'] = author_info['birthDate']['value']
-                if author_info['birthPlace']:
-                    author_info_row['birthPlace'] = author_info['birthPlace']['value']
-                if author_info['birthCountries']:
-                    author_info_row['birthCountries'] = author_info['birthCountries']['value']
-                if author_info['deathDate']:
-                    author_info_row['deathDate'] = author_info['deathDate']['value']
-                if author_info['genres']:
-                    author_info_row['genres'] = author_info['genres']['value']
-                if author_info['influenced']:
-                    author_info_row['influenced'] = author_info['influenced']['value']
-                if author_info['influencedBy']:
-                    author_info_row['influencedBy'] = author_info['influencedBy']['value']
 
-            author_info_df = author_info_df.append(author_info_row, ignore_index=True)
+                if len(author_info) > 0:
+                    author_info = author_info[0]
 
+                    if 'birthDate' in author_info and author_info['birthDate']:
+                        author_info_row['birthDate'] = author_info['birthDate']['value']
+
+                    if 'birthPlace' in author_info and author_info['birthPlace']:
+                        author_info_row['birthPlace'] = author_info['birthPlace']['value']
+
+                    if 'birthCountries' in author_info and author_info['birthCountries']:
+                        author_info_row['birthCountries'] = author_info['birthCountries']['value']
+
+                    if 'deathDate' in author_info and author_info['deathDate']:
+                        author_info_row['deathDate'] = author_info['deathDate']['value']
+
+                    if 'genres' in author_info and author_info['genres']:
+                        author_info_row['genres'] = author_info['genres']['value']
+
+                    if 'influenced' in author_info and author_info['influenced']:
+                        author_info_row['influenced'] = author_info['influenced']['value']
+
+                    if 'influencedBy' in author_info and author_info['influencedBy']:
+                        author_info_row['influencedBy'] = author_info['influencedBy']['value']
+
+                    author_info_row['properlyProcessed'] = True
+
+            row_list.append(author_info_row)
+
+        author_info_df = pd.DataFrame(row_list)
         return author_info_df
 
     def save_author_info(self, file_path: str) -> None:
