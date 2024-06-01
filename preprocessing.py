@@ -45,15 +45,15 @@ class Preprocessing:
 
         with open(path, "a", buffering=1, encoding="utf-8") as file:
             def write_line(
-                author_name: str,
-                birth_date: str | None,
-                birth_place: str | None,
-                birth_countries: str | None,
-                death_date: str | None,
-                genres: str | None,
-                influenced: str | None,
-                influenced_by: str | None,
-                properly_processed: bool,
+                    author_name: str,
+                    birth_date: str | None,
+                    birth_place: str | None,
+                    birth_countries: str | None,
+                    death_date: str | None,
+                    genres: str | None,
+                    influenced: str | None,
+                    influenced_by: str | None,
+                    properly_processed: bool,
             ):
                 """Write a line to the CSV file."""
                 file.write(
@@ -135,8 +135,11 @@ class Preprocessing:
                     author_info_row['properlyProcessed'],
                 )
 
+    def _clean_author(self, author: str) -> str:
+        return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Author;Narrator)', '').strip()
+
     def get_authors(self) -> list[str]:
-        return self.__dataframe['author'].unique()
+        return self.__dataframe['author'].map(self._clean_author).str.split(';').explode().unique().tolist()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
@@ -144,13 +147,15 @@ class Preprocessing:
             if str(author) == 'nan':
                 author = None
 
-            data: dict | None = self.__data_retriever.get_json_from_title_and_author(row['title'], author)
+            data: dict | False = self.__data_retriever.get_json_from_title_and_author(row['title'], author)
 
-            if data is None or data['totalItems'] == 0:
+            if not data or data['totalItems'] == 0:
                 return row
 
-            industry_identifiers: list[dict[str, str]] = data['items'][0]['volumeInfo']['industryIdentifiers']
-
+            try:
+                industry_identifiers: list[dict[str, str]] = data['items'][0]['volumeInfo']['industryIdentifiers']
+            except KeyError:
+                return row
             isbn13 = [
                 identifier['identifier'] for identifier in industry_identifiers
                 if identifier['type'].lower() == 'isbn_13'
@@ -167,7 +172,7 @@ class Preprocessing:
             if len(isbn10) > 0:
                 row['isbn10'] = isbn10[0]
 
-        data: dict | None = None
+        data: dict | False = False
 
         # Check if any of the __COLUMNS__ are NONE in te row
         for column in self.__COLUMNS__:
@@ -180,14 +185,14 @@ class Preprocessing:
                 elif search == 'rating' or search == 'rank':
                     continue
 
-                if data is None:
+                if not data:
                     isbn = row['isbn13']
                     if isbn is None:
                         isbn = row['isbn10']
 
                     data = self.__data_retriever.get_json_from_isbn(isbn)
 
-                if data is None:
+                if not data:
                     continue
 
                 if data['totalItems'] > 0:
@@ -207,8 +212,8 @@ class Preprocessing:
 if __name__ == '__main__':
     df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
     preprocessing: Preprocessing = Preprocessing(df)
-    # preprocessing.process()
-    # df = preprocessing.get_df()
-    # df.to_csv('datasets/processed.csv')
+    preprocessing.process()
+    df = preprocessing.get_df()
+    df.to_csv('datasets/processed.csv')
     preprocessing.create_author_info('datasets/author_info.csv')
     print(df)
