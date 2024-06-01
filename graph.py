@@ -1,0 +1,139 @@
+import pandas as pd
+from rdflib import Graph, URIRef, Literal, Namespace
+from rdflib.namespace import RDF, FOAF
+
+
+class KnowledgeGraph:
+
+    def __init__(self):
+        # Create a new RDFLib graph
+        self.graph = Graph()
+
+        # Define namespaces
+        self.EX = Namespace("http://example.org/")
+        self.SCHEMA = Namespace("http://schema.org/")
+
+        # Add namespaces to the graph
+        self.graph.bind("ex", self.EX)
+        self.graph.bind("schema", self.SCHEMA)
+        self.graph.bind("foaf", FOAF)
+
+    def add_book(self, entry: pd.Series):
+        # Column values: title, author, isbn13, isbn10, rank, rating, description, amazon_product_url, publisher, categories, year
+
+        if 'isbn13' not in entry:
+            return
+
+        isbn = entry['isbn13']
+        book_uri = URIRef(self.EX[isbn])  # Book url is the isbn
+
+        if 'author' in entry:
+            for author_name in entry['author'].split(';'):
+                author_uri = URIRef(
+                    self.EX[author_name.replace(' ', '_')])  # Author url of J. K. Rowling is J._K._Rowling
+
+                if not (author_uri, RDF.type, FOAF.Person) in self.graph:
+                    print(f"Author {author_name} not found in the graph")
+                    return
+
+                self.graph.add((book_uri, self.SCHEMA.Author, author_uri))
+
+        self.graph.add((book_uri, self.SCHEMA.identifier, Literal(isbn)))  # Add isbn as identifier
+        self.graph.add((book_uri, RDF.type, self.SCHEMA.book))
+        self.graph.add((book_uri, self.SCHEMA.Name, Literal(entry.get('title', False))))
+        self.graph.add((book_uri, self.SCHEMA.Rank, Literal(entry.get('rank', False))))
+        self.graph.add((book_uri, self.SCHEMA.Rating, Literal(entry.get('rating', False))))
+        self.graph.add((book_uri, self.SCHEMA.Description, Literal(entry.get('description', False))))
+        self.graph.add((book_uri, self.SCHEMA.AmazonProductUrl, Literal(entry.get('amazon_product_url', False))))
+
+        if 'categories' in entry:
+            categories = entry['categories'][1:-1].replace('"', '').split(',')
+
+            for category in categories:
+                category_uri = URIRef(self.EX[category.replace(' ', '_')])
+                if not (category_uri, RDF.type, self.SCHEMA.Category) in self.graph:
+                    self.graph.add((category_uri, RDF.type, self.SCHEMA.Category))
+                    self.graph.add((category_uri, self.SCHEMA.name, Literal(category)))
+
+                self.graph.add((book_uri, self.SCHEMA.category, category_uri))
+
+        if 'publisher' in entry:
+            publisher_uri = URIRef(self.EX[entry['publisher'].replace(' ', '_')])
+
+            if not (publisher_uri, RDF.type, self.SCHEMA.Publisher) in self.graph:
+                self.graph.add((publisher_uri, RDF.type, self.SCHEMA.Publisher))
+                self.graph.add((publisher_uri, self.SCHEMA.name, Literal(entry['publisher'])))
+
+            self.graph.add((book_uri, self.SCHEMA.publisher, publisher_uri))
+
+        if 'year' in entry:
+            year = entry['year']
+            if '-' in year:
+                year = year.split('-')[0]
+            elif '/' in year:
+                year = year.split('/')[2]
+
+            year_uri = URIRef(self.EX[year])
+
+            if not (year_uri, RDF.type, self.SCHEMA.Year) in self.graph:
+                self.graph.add((year_uri, RDF.type, self.SCHEMA.Year))
+                self.graph.add((year_uri, self.SCHEMA.year, Literal(year)))
+
+            self.graph.add((book_uri, self.SCHEMA.year, year_uri))
+
+    def add_property(self, subject: URIRef, predicate: URIRef, value: str):
+        if not value:
+            return
+
+        self.graph.add((subject, predicate, Literal(value)))
+
+    def add_author(self, entry: pd.Series):
+        if 'author' not in entry:
+            return
+
+        # Column values: author, birthDate, birthPlace, birthCountries, deathDate, genres, properlyProcessed
+        author_name = entry['author']
+        author_uri = URIRef(self.EX[author_name.replace(' ', '_')])
+
+        if (author_uri, RDF.type, FOAF.Person) in self.graph:
+            return
+
+        self.graph.add((author_uri, RDF.type, FOAF.Person))
+        # add all properties
+        self.graph.add((author_uri, FOAF.name, Literal(author_name)))
+        self.add_property(author_uri, self.EX.BirthDate, entry.get('birthDate', False))
+        self.add_property(author_uri, self.EX.BirthPlace, entry.get('birthPlace', False))
+        self.add_property(author_uri, self.EX.DeathDate, entry.get('deathDate', False))
+        self.add_property(author_uri, self.EX.ProperlyProcessed, entry.get('properlyProcessed', False))
+
+        if 'birthCountries' in entry:
+            birth_countries = entry['birthCountries'].split(',')
+
+            for country in birth_countries:
+                country_uri = URIRef(self.EX[country.replace(' ', '_')])
+                if not (country_uri, RDF.type, self.SCHEMA.Country) in self.graph:
+                    self.graph.add((country_uri, RDF.type, self.SCHEMA.Country))
+                    self.graph.add((country_uri, self.SCHEMA.name, Literal(country)))
+
+                self.graph.add((author_uri, self.EX.birthCountry, country_uri))
+
+        if 'genres' in entry:
+            genres = entry['genres'].split(',')
+
+            for genre in genres:
+                genre_uri = URIRef(self.EX[genre.replace(' ', '_')])
+                if not (genre_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
+                    self.graph.add((genre_uri, RDF.type, self.SCHEMA.Genre))
+                    self.graph.add((genre_uri, self.SCHEMA.name, Literal(genre)))
+
+                self.graph.add((author_uri, self.EX.genre, genre_uri))
+
+    def load_authors_csv(self, file: str):
+        df = pd.read_csv(file)
+        for index, row in df.iterrows():
+            self.add_author(row)
+
+    def load_books_csv(self, file: str):
+        df = pd.read_csv(file)
+        for index, row in df.iterrows():
+            self.add_book(row)
