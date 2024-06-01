@@ -18,7 +18,7 @@ class DataRetriever:
         try:
             base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
             params: dict[str, str] = {
-                'q':       f"isbn:{isbn}",
+                'q': f"isbn:{isbn}",
                 'langRestrict': 'en'
             }
 
@@ -41,12 +41,12 @@ class DataRetriever:
             base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
             if author is None:
                 params: dict[str, str] = {
-                    'q':       f"intitle:{title}",
+                    'q': f"intitle:{title}",
                     'langRestrict': 'en'
                 }
             else:
                 params: dict[str, str] = {
-                    'q':       f"intitle:{title}+inauthor:{author}",
+                    'q': f"intitle:{title}+inauthor:{author}",
                     'langRestrict': 'en'
                 }
 
@@ -95,6 +95,7 @@ class DataRetriever:
             return []
 
     def get_author_info_from_dbpedia(self, author_name: str) -> dict | bool:
+        author_name = author_name.replace(' ', '_')
         self.__requests += 1
         if self.__requests % 100 == 0:
             time.sleep(1)
@@ -132,7 +133,7 @@ class DataRetriever:
 
             # Set the parameters for the request
             params: dict[str, str] = {
-                'query':  query,
+                'query': query,
                 'format': 'application/sparql-results+json'
             }
 
