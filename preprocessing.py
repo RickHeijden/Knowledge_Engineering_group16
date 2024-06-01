@@ -3,6 +3,12 @@ import os
 from data_retriever import DataRetriever
 
 
+def _clean_author(author: str) -> str:
+    if type(author) is not str:
+        return ''
+    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Author;Narrator)', '').strip()
+
+
 class Preprocessing:
     __COLUMNS__: list[str] = ['title', 'author', 'year', 'publisher', 'rating', 'rank', 'categories', 'description']
     __dataframe: pd.DataFrame
@@ -78,12 +84,11 @@ class Preprocessing:
 
             authors: list[str] = self.get_authors()
 
-            for index, author in enumerate(authors):
-                author = str(author)
+            for author in authors:
                 author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
 
                 author_info_row: dict[str, str | bool | None] = {
-                    'author': author.replace(',', ';'),
+                    'author': author,
                     'birthDate': None,
                     'birthPlace': None,
                     'birthCountries': None,
@@ -135,11 +140,8 @@ class Preprocessing:
                     author_info_row['properlyProcessed'],
                 )
 
-    def _clean_author(self, author: str) -> str:
-        return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Author;Narrator)', '').strip()
-
     def get_authors(self) -> list[str]:
-        return self.__dataframe['author'].map(self._clean_author).str.split(';').explode().unique().tolist()
+        return list(self.__dataframe['author'].map(_clean_author).str.split(';').explode().unique())
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
@@ -210,10 +212,13 @@ class Preprocessing:
 
 
 if __name__ == '__main__':
-    df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
-    preprocessing: Preprocessing = Preprocessing(df)
-    preprocessing.process()
-    df = preprocessing.get_df()
-    df.to_csv('datasets/processed.csv')
+    if not os.path.exists('datasets/processed.csv'):
+        df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
+        preprocessing: Preprocessing = Preprocessing(df)
+        preprocessing.process()
+        df = preprocessing.get_df()
+        df.to_csv('datasets/processed.csv', index=False)
+    else:
+        df: pd.DataFrame = pd.read_csv('datasets/processed.csv')
+        preprocessing: Preprocessing = Preprocessing(df)
     preprocessing.create_author_info('datasets/author_info.csv')
-    print(df)
