@@ -95,7 +95,6 @@ class DataRetriever:
             return []
 
     def get_author_info_from_dbpedia(self, author_name: str) -> dict | bool:
-        author_name = author_name.replace(' ', '_')
         self.__requests += 1
         if self.__requests % 100 == 0:
             time.sleep(1)
@@ -105,31 +104,46 @@ class DataRetriever:
             endpoint: str = "https://dbpedia.org/sparql"
 
             # Construct the SPARQL query
-            query: str = f"""
-            SELECT
-                ?abstract
-                ?birthDate
-                ?birthPlace
-                (GROUP_CONCAT(DISTINCT ?birthCountry; separator=", ") as ?birthCountries)
-                ?deathDate
-                (GROUP_CONCAT(DISTINCT ?genre; separator=", ") as ?genres)
-                ?influenced
-                ?influencedBy
-            WHERE {{
-                ?author a dbo:Writer ;
-                        foaf:name "{author_name}"@en ;
-                        dbo:abstract ?abstract .
-                OPTIONAL {{ ?author dbo:birthDate ?birthDate . }}
-                OPTIONAL {{ ?author dbo:birthPlace ?birthPlace . }}
-                OPTIONAL {{ ?author dbo:deathDate ?deathDate . }}
-                OPTIONAL {{ ?author dbo:genre ?genre . }}
-                OPTIONAL {{ ?author dbo:influenced ?influenced . }}
-                OPTIONAL {{ ?author dbo:influencedBy ?influencedBy . }}
-                OPTIONAL {{ ?birthPlace dbo:country ?birthCountry . }}
-                FILTER (lang(?abstract) = 'en')
-            }}
-            GROUP BY ?abstract ?birthDate ?birthPlace ?deathDate ?influenced ?influencedBy
-            """
+            query: str = """
+        SELECT
+            ?abstract
+            ?birthDate
+            ?countryCode
+            ?deathDate
+            (GROUP_CONCAT(DISTINCT ?genre; separator=", ") as ?genres)
+            (GROUP_CONCAT(DISTINCT ?influenced; separator=", ") as ?influenced)
+            (GROUP_CONCAT(DISTINCT ?influencedBy; separator=", ") as ?influencedBys)
+        WHERE {
+            {
+                SELECT DISTINCT ?author ?abstract ?birthDate ?countryCode ?deathDate ?genre ?influenced ?influencedBy (SAMPLE(?isWriter) as ?writerSample)
+                WHERE {
+                    ?author dbp:name "%s"@en ;
+                            dbo:abstract ?abstract .
+                    OPTIONAL { ?author a dbo:Writer . BIND(true AS ?isWriter) }
+                    OPTIONAL { ?author dbo:birthDate ?birthDate . }
+                    OPTIONAL { 
+                        ?author dbo:birthPlace ?birthPlace .
+                        {
+                            ?birthPlace dbo:iso31661Code?countryCode .
+                        }
+                        UNION
+                        {
+                            ?birthPlace a dbo:Country .
+                            ?birthPlace dbo:iso31661Code?countryCode .
+                        }
+                    }
+                    OPTIONAL { ?author dbo:deathDate ?deathDate . }
+                    OPTIONAL { ?author dbo:genre ?genre . }
+                    OPTIONAL { ?author dbo:influenced ?influenced . }
+                    OPTIONAL { ?author dbo:influencedBy ?influencedBy . }
+                    FILTER (lang(?abstract) = 'en')
+                }
+                GROUP BY ?author ?abstract ?birthDate ?countryCode ?deathDate ?genre ?influenced ?influencedBy
+            }
+            FILTER (!BOUND(?writerSample) || ?writerSample = true)
+        }
+        GROUP BY ?abstract ?birthDate ?countryCode ?deathDate
+            """ % author_name
 
             # Set the parameters for the request
             params: dict[str, str] = {
@@ -142,9 +156,22 @@ class DataRetriever:
             if response.status_code != 200:
                 return False
 
+            data = response.json()
+            # Check if the response is empty
+            if not data['results']['bindings']:
+                if '.' in author_name:
+                    author_name = author_name.replace('.', '')
+                    return self.get_author_info_from_dbpedia(author_name)
+                return False
+
             # Return the JSON response
-            return response.json()
+            return data
         except RequestException as e:
             print(f"An error occurred: {e}")
 
             return False
+
+
+if __name__ == '__main__':
+    data_retriever = DataRetriever()
+    print(data_retriever.get_author_info_from_dbpedia('Jordan B. Peterson'))
