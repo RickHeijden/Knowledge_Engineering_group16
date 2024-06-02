@@ -3,6 +3,22 @@ from rdflib import Graph, URIRef, Literal, Namespace
 from rdflib.namespace import RDF, FOAF
 
 
+def _clean_author(author: str) -> str:
+    if type(author) is not str:
+        return ''
+    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Illustrator)', '').replace(
+        '(Author;Narrator)', '')
+
+
+def _filter_weird_authors(author: str) -> bool:
+    return author.strip() and author != '0 more' and 'Publisher' not in author and 'Compiler' not in author and 'Editor' not in author
+
+
+# Author url of J. K. Rowling is J._K._Rowling
+def _url_encode_author(author: str) -> str:
+    return author.replace('"', '').replace(' ', '_')
+
+
 class KnowledgeGraph:
 
     def __init__(self):
@@ -28,9 +44,10 @@ class KnowledgeGraph:
         book_uri = URIRef(self.EX[isbn])  # Book url is the isbn
 
         if entry['author']:
-            for author_name in entry['author'].split(';'):
-                author_uri = URIRef(
-                    self.EX[author_name.replace(' ', '_')])  # Author url of J. K. Rowling is J._K._Rowling
+            authors = filter(_filter_weird_authors, _clean_author(entry['author']).split(';'))
+            for author_name in authors:
+                author_name = author_name.strip()
+                author_uri = URIRef(self.EX[_url_encode_author(author_name)])
 
                 if not (author_uri, RDF.type, FOAF.Person) in self.graph:
                     print(f"Author {author_name} not found in the graph")
@@ -46,7 +63,7 @@ class KnowledgeGraph:
         self.add_property(book_uri, self.SCHEMA.Description, entry['description'])
         self.add_property(book_uri, self.SCHEMA.AmazonProductUrl, entry['amazon_product_url'])
 
-        if 'categories' in entry:
+        if entry['categories']:
             categories = entry['categories'][1:-1].replace('"', '').split(',')
 
             for category in categories:
@@ -93,7 +110,7 @@ class KnowledgeGraph:
 
         # Column values: author, birth_date, birth_place, birth_countries, death_date, genres, properly_processed
         author_name = entry['author']
-        author_uri = URIRef(self.EX[author_name.replace(' ', '_')])
+        author_uri = URIRef(self.EX[_url_encode_author(author_name)])
 
         if (author_uri, RDF.type, FOAF.Person) in self.graph:
             return
@@ -140,6 +157,6 @@ class KnowledgeGraph:
 if __name__ == '__main__':
     kg = KnowledgeGraph()
     kg.load_authors_csv('datasets/author_info.csv')
-    kg.load_books_csv('datasets/preprocessed.csv')
+    kg.load_books_csv('datasets/processed.csv')
     kg.graph.serialize('graph.rdf', format='xml')
     print("Graph saved as graph.rdf")
