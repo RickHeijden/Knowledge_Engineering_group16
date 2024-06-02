@@ -6,7 +6,8 @@ from data_retriever import DataRetriever
 def _clean_author(author: str) -> str:
     if type(author) is not str:
         return ''
-    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Illustrator)', '').replace('(Author;Narrator)', '')
+    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Illustrator)', '').replace(
+        '(Author;Narrator)', '')
 
 
 def _filter_weird_authors(author: str) -> bool:
@@ -42,7 +43,7 @@ class Preprocessing:
                             "author",
                             "birth_date",
                             "birth_place",
-                            "birth_countries",
+                            "birth_country",
                             "death_date",
                             "genres",
                             "influenced",
@@ -56,13 +57,12 @@ class Preprocessing:
         with open(path, "a", buffering=1, encoding="utf-8") as file:
             def write_line(
                     author_name: str,
-                    birth_date: str | None,
-                    birth_place: str | None,
-                    birth_countries: str | None,
-                    death_date: str | None,
-                    genres: str | None,
-                    influenced: str | None,
-                    influenced_by: str | None,
+                    birth_date: str,
+                    birth_country: str,
+                    death_date: str,
+                    genres: str,
+                    influenced: str,
+                    influenced_by: str,
                     properly_processed: bool,
             ):
                 """Write a line to the CSV file."""
@@ -73,8 +73,7 @@ class Preprocessing:
                             [
                                 author_name,
                                 birth_date,
-                                birth_place,
-                                birth_countries,
+                                birth_country,
                                 death_date,
                                 genres,
                                 influenced,
@@ -91,15 +90,14 @@ class Preprocessing:
             for author in authors:
                 author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
 
-                author_info_row: dict[str, str | bool | None] = {
+                author_info_row: dict[str, str | bool] = {
                     'author': author,
-                    'birthDate': None,
-                    'birthPlace': None,
-                    'birthCountries': None,
-                    'deathDate': None,
-                    'genres': None,
-                    'influenced': None,
-                    'influencedBy': None,
+                    'birthDate': '',
+                    'birthCountry': '',
+                    'deathDate': '',
+                    'genres': '',
+                    'influenced': '',
+                    'influencedBy': '',
                     'properlyProcessed': False,
                 }
 
@@ -112,17 +110,15 @@ class Preprocessing:
                         if 'birthDate' in author_info and author_info['birthDate']:
                             author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
 
-                        if 'birthPlace' in author_info and author_info['birthPlace']:
-                            author_info_row['birthPlace'] = author_info['birthPlace']['value'].replace(',', ';')
-
-                        if 'birthCountries' in author_info and author_info['birthCountries']:
-                            author_info_row['birthCountries'] = author_info['birthCountries']['value'].replace(',', ';')
+                        if 'countryCode' in author_info and author_info['countryCode']:
+                            author_info_row['birthCountry'] = author_info['countryCode']['value']
 
                         if 'deathDate' in author_info and author_info['deathDate']:
                             author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
 
                         if 'genres' in author_info and author_info['genres']:
-                            author_info_row['genres'] = author_info['genres']['value'].replace(',', ';')
+                            author_info_row['genres'] = author_info['genres']['value'].replace(
+                                'http://dbpedia.org/resource/', '').replace(',', ';')
 
                         if 'influenced' in author_info and author_info['influenced']:
                             author_info_row['influenced'] = author_info['influenced']['value'].replace(',', ';')
@@ -135,17 +131,17 @@ class Preprocessing:
                 write_line(
                     author_info_row['author'],
                     author_info_row['birthDate'],
-                    author_info_row['birthPlace'],
-                    author_info_row['birthCountries'],
+                    author_info_row['birthCountry'],
                     author_info_row['deathDate'],
                     author_info_row['genres'],
                     author_info_row['influenced'],
                     author_info_row['influencedBy'],
-                    author_info_row['properlyProcessed'],
+                    author_info_row['properlyProcessed']
                 )
 
     def get_authors(self) -> list[str]:
-        return filter(_filter_weird_authors, list(self.__dataframe['author'].map(_clean_author).str.split(';').explode().map(lambda s: s.strip()).unique()))
+        return filter(_filter_weird_authors, list(
+            self.__dataframe['author'].map(_clean_author).str.split(';').explode().map(lambda s: s.strip()).unique()))
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':

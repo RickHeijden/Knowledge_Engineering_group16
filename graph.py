@@ -21,13 +21,13 @@ class KnowledgeGraph:
     def add_book(self, entry: pd.Series):
         # Column values: title, author, isbn13, isbn10, rank, rating, description, amazon_product_url, publisher, categories, year
 
-        if 'isbn13' not in entry:
+        if not entry['isbn13']:
             return
 
         isbn = entry['isbn13']
         book_uri = URIRef(self.EX[isbn])  # Book url is the isbn
 
-        if 'author' in entry:
+        if entry['author']:
             for author_name in entry['author'].split(';'):
                 author_uri = URIRef(
                     self.EX[author_name.replace(' ', '_')])  # Author url of J. K. Rowling is J._K._Rowling
@@ -40,11 +40,11 @@ class KnowledgeGraph:
 
         self.graph.add((book_uri, self.SCHEMA.identifier, Literal(isbn)))  # Add isbn as identifier
         self.graph.add((book_uri, RDF.type, self.SCHEMA.book))
-        self.graph.add((book_uri, self.SCHEMA.Name, Literal(entry.get('title', False))))
-        self.graph.add((book_uri, self.SCHEMA.Rank, Literal(entry.get('rank', False))))
-        self.graph.add((book_uri, self.SCHEMA.Rating, Literal(entry.get('rating', False))))
-        self.graph.add((book_uri, self.SCHEMA.Description, Literal(entry.get('description', False))))
-        self.graph.add((book_uri, self.SCHEMA.AmazonProductUrl, Literal(entry.get('amazon_product_url', False))))
+        self.add_property(book_uri, self.SCHEMA.Name, entry['title'])
+        self.add_property(book_uri, self.SCHEMA.Rank, entry['rank'])
+        self.add_property(book_uri, self.SCHEMA.Rating, entry['rating'])
+        self.add_property(book_uri, self.SCHEMA.Description, entry['description'])
+        self.add_property(book_uri, self.SCHEMA.AmazonProductUrl, entry['amazon_product_url'])
 
         if 'categories' in entry:
             categories = entry['categories'][1:-1].replace('"', '').split(',')
@@ -57,7 +57,7 @@ class KnowledgeGraph:
 
                 self.graph.add((book_uri, self.SCHEMA.category, category_uri))
 
-        if 'publisher' in entry:
+        if entry['publisher']:
             publisher_uri = URIRef(self.EX[entry['publisher'].replace(' ', '_')])
 
             if not (publisher_uri, RDF.type, self.SCHEMA.Publisher) in self.graph:
@@ -66,7 +66,7 @@ class KnowledgeGraph:
 
             self.graph.add((book_uri, self.SCHEMA.publisher, publisher_uri))
 
-        if 'year' in entry:
+        if entry['year']:
             year = entry['year']
             if '-' in year:
                 year = year.split('-')[0]
@@ -101,30 +101,28 @@ class KnowledgeGraph:
         self.graph.add((author_uri, RDF.type, FOAF.Person))
         # add all properties
         self.graph.add((author_uri, FOAF.name, Literal(author_name)))
-        self.add_property(author_uri, self.EX.BirthDate, entry.get('birthDate', False))
-        self.add_property(author_uri, self.EX.BirthPlace, entry.get('birthPlace', False))
-        self.add_property(author_uri, self.EX.DeathDate, entry.get('deathDate', False))
-        self.add_property(author_uri, self.EX.ProperlyProcessed, entry.get('properlyProcessed', False))
+        self.add_property(author_uri, self.EX.BirthDate, entry['birth_date'])
+        self.add_property(author_uri, self.EX.BirthPlace, entry['birth_place'])
+        self.add_property(author_uri, self.EX.DeathDate, entry['death_date'])
+        self.add_property(author_uri, self.EX.ProperlyProcessed, entry['properly_processed'])
 
-        if entry['birth__countries']:
-            birth_countries = entry['birth_countries'].split(',')
+        if entry['birth_country']:
+            country_uri = URIRef(self.EX[entry['birth_country']])
+            if not (country_uri, RDF.type, self.SCHEMA.Country) in self.graph:
+                self.graph.add((country_uri, RDF.type, self.SCHEMA.Country))
+                self.graph.add((country_uri, self.SCHEMA.name, Literal(entry['birth_country'])))
 
-            for country in birth_countries:
-                country_uri = URIRef(self.EX[country.replace(' ', '_')])
-                if not (country_uri, RDF.type, self.SCHEMA.Country) in self.graph:
-                    self.graph.add((country_uri, RDF.type, self.SCHEMA.Country))
-                    self.graph.add((country_uri, self.SCHEMA.name, Literal(country)))
-
-                self.graph.add((author_uri, self.EX.birthCountry, country_uri))
+            self.graph.add((author_uri, self.EX.birthCountry, country_uri))
 
         if entry['genres']:
             genres = entry['genres'].split(',')
 
             for genre in genres:
-                genre_uri = URIRef(self.EX[genre.replace(' ', '_')])
+                genre = genre.strip()
+                genre_uri = URIRef(self.EX[genre.replace(genre, '')])
                 if not (genre_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
                     self.graph.add((genre_uri, RDF.type, self.SCHEMA.Genre))
-                    self.graph.add((genre_uri, self.SCHEMA.name, Literal(genre)))
+                    self.graph.add((genre_uri, self.SCHEMA.name, Literal(genre.replace('_', ' '))))
 
                 self.graph.add((author_uri, self.EX.genre, genre_uri))
 
