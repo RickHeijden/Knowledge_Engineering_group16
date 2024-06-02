@@ -88,10 +88,10 @@ class KnowledgeGraph:
         self.graph.add((subject, predicate, Literal(value)))
 
     def add_author(self, entry: pd.Series):
-        if 'author' not in entry:
+        if not entry['author']:
             return
 
-        # Column values: author, birthDate, birthPlace, birthCountries, deathDate, genres, properlyProcessed
+        # Column values: author, birth_date, birth_place, birth_countries, death_date, genres, properly_processed
         author_name = entry['author']
         author_uri = URIRef(self.EX[author_name.replace(' ', '_')])
 
@@ -106,8 +106,8 @@ class KnowledgeGraph:
         self.add_property(author_uri, self.EX.DeathDate, entry.get('deathDate', False))
         self.add_property(author_uri, self.EX.ProperlyProcessed, entry.get('properlyProcessed', False))
 
-        if 'birthCountries' in entry:
-            birth_countries = entry['birthCountries'].split(',')
+        if entry['birth__countries']:
+            birth_countries = entry['birth_countries'].split(',')
 
             for country in birth_countries:
                 country_uri = URIRef(self.EX[country.replace(' ', '_')])
@@ -117,7 +117,7 @@ class KnowledgeGraph:
 
                 self.graph.add((author_uri, self.EX.birthCountry, country_uri))
 
-        if 'genres' in entry:
+        if entry['genres']:
             genres = entry['genres'].split(',')
 
             for genre in genres:
@@ -129,11 +129,19 @@ class KnowledgeGraph:
                 self.graph.add((author_uri, self.EX.genre, genre_uri))
 
     def load_authors_csv(self, file: str):
-        df = pd.read_csv(file)
+        df = pd.read_csv(file).fillna(False)
         for index, row in df.iterrows():
             self.add_author(row)
 
     def load_books_csv(self, file: str):
-        df = pd.read_csv(file)
+        df = pd.read_csv(file).fillna(False)
         for index, row in df.iterrows():
             self.add_book(row)
+
+
+if __name__ == '__main__':
+    kg = KnowledgeGraph()
+    kg.load_authors_csv('datasets/author_info.csv')
+    kg.load_books_csv('datasets/preprocessed.csv')
+    kg.graph.serialize('graph.rdf', format='xml')
+    print("Graph saved as graph.rdf")

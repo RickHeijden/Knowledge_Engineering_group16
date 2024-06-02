@@ -6,7 +6,11 @@ from data_retriever import DataRetriever
 def _clean_author(author: str) -> str:
     if type(author) is not str:
         return ''
-    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Author;Narrator)', '').strip()
+    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Illustrator)', '').replace('(Author;Narrator)', '')
+
+
+def _filter_weird_authors(author: str) -> bool:
+    return author != '0 more' and 'Publisher' not in author and 'Compiler' not in author and 'Editor' not in author
 
 
 class Preprocessing:
@@ -141,7 +145,7 @@ class Preprocessing:
                 )
 
     def get_authors(self) -> list[str]:
-        return list(self.__dataframe['author'].map(_clean_author).str.split(';').explode().unique())
+        return filter(_filter_weird_authors, list(self.__dataframe['author'].map(_clean_author).str.split(';').explode().map(lambda s: s.strip()).unique()))
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
