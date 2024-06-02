@@ -174,4 +174,4 @@ class DataRetriever:
 
 if __name__ == '__main__':
     data_retriever = DataRetriever()
-    print(data_retriever.get_author_info_from_dbpedia('Jordan B. Peterson'))
+    print(data_retriever.get_author_info_from_dbpedia('JJ Smith'))
