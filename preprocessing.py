@@ -110,8 +110,8 @@ class Preprocessing:
                         if 'birthDate' in author_info and author_info['birthDate']:
                             author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
 
-                        if 'countryCode' in author_info and author_info['countryCode']:
-                            author_info_row['birthCountry'] = author_info['countryCode']['value']
+                        if 'countryName' in author_info and author_info['countryName']:
+                            author_info_row['birthCountry'] = author_info['countryName']['value']
 
                         if 'deathDate' in author_info and author_info['deathDate']:
                             author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
