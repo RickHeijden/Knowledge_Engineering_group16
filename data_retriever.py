@@ -108,14 +108,14 @@ class DataRetriever:
         SELECT
             ?abstract
             ?birthDate
-            ?countryCode
+            ?countryName
             ?deathDate
             (GROUP_CONCAT(DISTINCT ?genre; separator=", ") as ?genres)
             (GROUP_CONCAT(DISTINCT ?influenced; separator=", ") as ?influenced)
             (GROUP_CONCAT(DISTINCT ?influencedBy; separator=", ") as ?influencedBys)
         WHERE {
             {
-                SELECT DISTINCT ?author ?abstract ?birthDate ?countryCode ?deathDate ?genre ?influenced ?influencedBy (SAMPLE(?isWriter) as ?writerSample)
+                SELECT DISTINCT ?author ?abstract ?birthDate ?countryName ?deathDate ?genre ?influenced ?influencedBy (SAMPLE(?isWriter) as ?writerSample)
                 WHERE {
                     ?author dbp:name "%s"@en ;
                             dbo:abstract ?abstract .
@@ -124,12 +124,15 @@ class DataRetriever:
                     OPTIONAL { 
                         ?author dbo:birthPlace ?birthPlace .
                         {
-                            ?birthPlace dbo:iso31661Code?countryCode .
+                            ?birthPlace dbo:country ?country .
+                            ?country rdfs:label ?countryName .
+                            FILTER (lang(?countryName) = "en")
                         }
                         UNION
                         {
                             ?birthPlace a dbo:Country .
-                            ?birthPlace dbo:iso31661Code?countryCode .
+                            ?birthPlace rdfs:label ?countryName .
+                            FILTER (lang(?countryName) = "en")
                         }
                     }
                     OPTIONAL { ?author dbo:deathDate ?deathDate . }
@@ -138,11 +141,11 @@ class DataRetriever:
                     OPTIONAL { ?author dbo:influencedBy ?influencedBy . }
                     FILTER (lang(?abstract) = 'en')
                 }
-                GROUP BY ?author ?abstract ?birthDate ?countryCode ?deathDate ?genre ?influenced ?influencedBy
+                GROUP BY ?author ?abstract ?birthDate ?countryName ?deathDate ?genre ?influenced ?influencedBy
             }
             FILTER (!BOUND(?writerSample) || ?writerSample = true)
         }
-        GROUP BY ?abstract ?birthDate ?countryCode ?deathDate
+        GROUP BY ?abstract ?birthDate ?countryName ?deathDate
             """ % author_name
 
             # Set the parameters for the request
