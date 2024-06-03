@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+import re
 
 # 1) Convert the fourth dataset from JSON file to CSV
 # 2) Explore the csv headers
@@ -10,6 +11,11 @@ import os
 if __name__ == '__main__':
     # Dataset files
     directory = 'datasets/'
+
+
+    def combine_rows(series: pd.Series):
+        return series.dropna().iloc[0] if not series.dropna().empty else None
+
 
     # Check if combined.csv exists using os
     if not os.path.exists(directory + 'combined.csv'):
@@ -55,9 +61,6 @@ if __name__ == '__main__':
 
         combined_dataframe = pd.concat(dataframes, ignore_index=True)
 
-        def combine_rows(series: pd.Series):
-            return series.dropna().iloc[0] if not series.dropna().empty else None
-
         print(len(combined_dataframe))
         # Join on isbn10, isbn13, (title and author)
         combined_dataframe_without_isbn10 = combined_dataframe[combined_dataframe['isbn10'].isnull()]
@@ -82,7 +85,174 @@ if __name__ == '__main__':
     else:
         combined_dataframe = pd.read_csv('datasets/combined.csv')
 
+
+    def process_authors(author: str):
+        if pd.isnull(author):
+            return author
+        original_author = author
+
+        author = author.replace('’', "'")
+        author = author.replace('–', '-')
+        author = author.replace('“', '"')
+
+        # Remove any 'PhD' or 'Ph.D.' (case-insensitive)
+        author = re.sub(r'(?i)\bph\.?d\.?\b', '', author)
+
+        # Remove any 'MD' or 'M.D.' or 'M.Ed. (case-insensitive)
+        author = re.sub(r'(?i)\bm\.?e?d\.?\b', '', author)
+
+        # Remove any 'FACLM' (case-insensitive)
+        author = re.sub(r'(?i)faclm', '', author)
+
+        # Remove any 'Dr' or 'Dr.' (case-insensitive)
+        if author.lower() != 'dr. seuss':
+            author = re.sub(r'(?i)\bdr\.?\b', '', author)
+
+        # Remove any 'by' (case-insensitive)
+        author = re.sub(r'(?i)\bby\b', '', author)
+
+        # Remove any 'x more' where x is an integer (case-insensitive)
+        author = re.sub(r'(?i)\b\d+\s*more\b', '', author)
+
+        # Remove any 'MS' (case-insensitive)
+        author = re.sub(r'(?i)\bms\b', '', author)
+
+        # Remove any 'RD' (case-insensitive)
+        author = re.sub(r'(?i)\brd\b', '', author)
+
+        # Remove any 'CDN' (case-insensitive)
+        author = re.sub(r'(?i)\bcdn\b', '', author)
+
+        # Remove any 'et al' or 'et al.' (case-insensitive)
+        author = re.sub(r'(?i)\bet\s+al\.?\b', '', author)
+
+        # Changes strings with things like '(Narrator, Author)' to '(Author)'
+        author = re.sub(r'\(\w+,\s+Author\)', '(Author)', author)
+
+        # Remove any 'Publisher' or 'Editor' or 'Illustrator' or 'Compiler' or 'Narrator', but not 'Author'
+        author = ",".join([
+            s for s in author.split(',')
+            if (('Publisher' not in s) and
+                ('Editor' not in s) and
+                ('Illustrator' not in s) and
+                ('Compiler' not in s) and
+                ('Narrator' not in s))
+               or 'Author' in s
+        ])
+
+        # Remove any (Author,) with (,) optional
+        author = re.sub(r'\(?Author,?\)?', '', author)
+
+        # Handle special cases with the publisher DK
+        author = (author
+                  .replace('Stan LeeDK', 'Stan Lee;DK')
+                  .replace('Stephen WiacekDKStan Lee', 'Stephen Wiacek;DK;Stan Lee'))
+
+        # Remove any 'Format: ' followed by any word characters and whitespace
+        author = re.sub(r'(?i)Format:[\s\w]+', '', author)
+
+        # Remove any '(Foreword)' (case-insensitive)
+        author = re.sub(r'(?i)\(Foreword\)', '', author)
+
+        # Remove any '- foreword', '- essay', etc (case-insensitive)
+        author = re.sub(r'(?i)- (foreword|essay|translator|abridgement and introduction)', '', author)
+
+        # Replace any 'created' by ';' in the middle (case-insensitive)
+        author = re.sub(r'(?i)\bcreated\b', ';', author)
+
+        # Remove any 'edited' or 'written', etc (case-insensitive)
+        author = re.sub(r'(?i)(edited|written|adapted|created|lyrics|from texts|novelization|compiled|admiral)', '', author)
+
+        # Remove any 'various authors' or 'various illustrators' or 'various authors and artists' (case-insensitive)
+        author = re.sub(r'(?i)various\s?(authors( and artists)?|illustrators)?', '', author)
+
+        # Remove any 'with an introduction' or 'with related materials' (case-insensitive)
+        author = re.sub(r'(?i)with (an introduction|related materials)', '', author)
+
+        # Remove any 'and others', 'with others', '& [some number] others' (case-insensitive)
+        author = re.sub(r'(?i)(and|with|& \d+) others', '', author)
+
+        # Remove any 'writing as' with any word characters and whitespace preceding (case-insensitive)
+        author = re.sub(r'(?i)[\w\s]+writing as', '', author)
+
+        # Remove any 'photographs, 'translated', or 'designed' with any word characters and whitespace following
+        #  (case-insensitive)
+        author = re.sub(r'(?i)(photographs|translated|designed)[\w\s]+', '', author)
+
+        # Remove any leading or trailing whitespace and punctuation
+        author = author.strip().strip('.,&;').strip()
+
+        # This puts a semicolon between two authors that are concatenated
+        str_author = str(author)
+        for author_split in re.split(r'\.|\s|-|;', str_author):
+            author_split = author_split.strip('.,&();"\'')
+
+            # Skip the exceptions
+            exceptions = [
+                'PewDiePie',
+                'MaryJanice',
+                'RPG',
+                'MALCOLM',
+                'VTech',
+                'KEI',
+                'HILL',
+                'ERIC',
+                'PopularMMOs',
+                'NOFX',
+                'MarcyKate',
+                'NaRae',
+                'JoJo',
+                'HARARI',
+                'YUVAL',
+                'NOAH',
+                'WuDunn',
+                'BarkPost',
+                'JoAnn',
+                'deGrasse',
+                'MantraCraft',
+                'Oh!Great',
+                'HighBridge',
+                'OKAYADO',
+                'StacyPlays',
+                'FitzSimmons',
+                'ACT',
+                'GMAC',
+                'LevelFiveMedia',
+                'III',
+                'WEB',
+                'JRR',
+                'RaeAnne',
+                'ONE',
+                'TEAS',
+                'QuinRose',
+                'MonRin',
+                'RoseMarie',
+            ]
+            if any(author_split == exception for exception in exceptions):
+                continue
+
+            # Remove any 'Mac' or 'Mc' or 'Dell' or 'Di'/'De'/'Du' or "O/D/L'" or 'Ter' or 'La' (case-insensitive)
+            author_split = re.sub(r'M(a)?c', '', author_split)
+            author_split = re.sub(r"Dell'", '', author_split)
+            author_split = re.sub(r'D[ieu]', '', author_split)
+            author_split = re.sub(r"[ODL]'", '', author_split)
+            author_split = re.sub(r"Ter", '', author_split)
+            author_split = re.sub(r"La", '', author_split)
+
+            if len(author_split) > 2:
+                author_split_without_first = author_split[1:]
+                if any(c.isupper() for c in author_split_without_first):
+                    # Put semicolon between the authors, before the letter in uppercase in code not print
+                    author = author.replace(
+                        author_split_without_first,
+                        "".join([';' + char if char.isupper() else char for char in author_split_without_first])
+                    )
+
+        return author
+
+
     words_to_split_author = [' and ', ',', '&', ' with ']
+
 
     def split_authors(author):
         if pd.isnull(author):
@@ -96,9 +266,17 @@ if __name__ == '__main__':
             split_authors = [a for auth in split_authors for a in auth.split(word)]
 
         # Join the resulting list with ';'
-        return ';'.join(a.strip() for a in split_authors)
+        return ';'.join([a.strip() for a in split_authors if a.strip() != ''])
+
 
     # Apply the function to the 'author' column
+    combined_dataframe['author'] = combined_dataframe['author'].apply(process_authors)
     combined_dataframe['author'] = combined_dataframe['author'].apply(split_authors)
+
+    # Same for title and author
+    # combined_dataframe_without_title_author = \
+    #     combined_dataframe[combined_dataframe['title'].isnull() | combined_dataframe['author'].isnull()]
+    # combined_dataframe = combined_dataframe.groupby(['title', 'author'], as_index=False).agg(combine_rows)
+    # combined_dataframe = pd.concat([combined_dataframe, combined_dataframe_without_title_author], ignore_index=True)
 
     combined_dataframe.to_csv(directory + 'combined_filtered.csv', index=False)
