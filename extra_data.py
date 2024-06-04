@@ -16,6 +16,8 @@ def add_missing_data_according_to_isbn(attribute='publisher'):
     # Open combined.csv, using pandas
     df = pd.read_csv('datasets/combined.csv')
     # Create switch-case condition for the attribute
+    if attribute not in df.columns:
+        clear_values_for_field(df, attribute)
     if attribute == 'publisher':
         add_publisher(df)
         return
@@ -103,7 +105,7 @@ if __name__ == '__main__':
     print(f"Publisher for ISBN {isbn}: {publisher}")
     add_new_field("country_of_publication")
     # clear_values_for_field(field="country_of_publication")
-    # add_missing_data_according_to_isbn("country_of_publication")
+    add_missing_data_according_to_isbn("country_of_publication")
 
     # Example of a book published in Greece
     isbn = '9789609308939'
