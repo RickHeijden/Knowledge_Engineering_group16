@@ -1,8 +1,9 @@
 import requests
 import pandas as pd
+from utils.isbn13_country_mappings import get_country_from_isbn
 
 
-def add_data_according_to_isbn():
+def add_missing_data_according_to_isbn(attribute='publisher'):
     # https://e-service.nlt.go.th/File/DetailByName?fileName=E%3A%5C_files%5CFolio.Test%5CAdminDownload%5C0cc018b8-9ad6-44bd-969e-a2f95c043aef.pdf
     # ISBN13 structure
     # 978-1-56619-909-4
@@ -14,11 +15,35 @@ def add_data_according_to_isbn():
 
     # Open combined.csv, using pandas
     df = pd.read_csv('datasets/combined.csv')
+    # Create switch-case condition for the attribute
+    if attribute == 'publisher':
+        add_publisher(df)
+        return
+    if attribute == 'country_of_publication':
+        add_country_of_publication(df)
+        return
+
+
+# Add the county of publication based on the ISBN13 field
+def add_country_of_publication(df):
+    for index, row in df.iterrows():
+        file_country = row["country_of_publication"]
+        if pd.isna(file_country) or not file_country:
+            if not row['isbn13']:
+                continue
+            found_country = get_country_from_isbn(row['isbn13'])
+            df.at[index, 'country_of_publication'] = found_country
+            print(f"Added country {found_country} to row {index}")
+    # Save the csv
+    df.to_csv('datasets/combined.csv', index=False)
+
+
+def add_publisher(df):
     # For each row that doesn't have a publisher, use the ISBN to get the publisher
     for index, row in df.iterrows():
         file_publisher = row["publisher"]
         if pd.isna(file_publisher) or not file_publisher:
-            found_publisher = get_publisher_using_isbn(row['isbn13'])
+            found_publisher = get_publisher_using_api_call_on_isbn(row['isbn13'])
             if found_publisher == 'Publisher not found':
                 print(f"Publisher not found for row {index}")
                 continue
@@ -26,7 +51,8 @@ def add_data_according_to_isbn():
             print(f"Added publisher {found_publisher} to row {index}")
 
 
-def get_publisher_using_isbn(isbn):
+# TODO: Use multithreading to speed up the process
+def get_publisher_using_api_call_on_isbn(isbn):
     found_publisher = get_publisher_from_open_library(isbn)
     if not found_publisher:
         found_publisher = get_publisher_from_google_books(isbn)
@@ -56,9 +82,30 @@ def get_publisher_from_open_library(isbn):
     return 'Publisher not found'
 
 
-# TODO: Use multithreading to speed up the process
+# Add a new field to the combined.csv file
+def add_new_field(field):
+    df = pd.read_csv('datasets/combined.csv')
+    if field in df.columns:
+        return
+    clear_values_for_field(df, field)
+
+
+def clear_values_for_field(df=None, field="country_of_publication"):
+    if df is None:
+        df = pd.read_csv('datasets/combined.csv')
+    df[field] = None
+    df.to_csv('datasets/combined.csv', index=False)
+
+
 if __name__ == '__main__':
     isbn = "9780545153775"
-    publisher = get_publisher_using_isbn(isbn)
+    publisher = get_publisher_using_api_call_on_isbn(isbn)
     print(f"Publisher for ISBN {isbn}: {publisher}")
-    add_data_according_to_isbn()
+    add_new_field("country_of_publication")
+    # clear_values_for_field(field="country_of_publication")
+    # add_missing_data_according_to_isbn("country_of_publication")
+
+    # Example of a book published in Greece
+    isbn = '9789609308939'
+    country = get_country_from_isbn(isbn)
+    print(f'The country of publication for ISBN {isbn} is: {country}')
