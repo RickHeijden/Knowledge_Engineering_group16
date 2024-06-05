@@ -50,7 +50,7 @@ class KnowledgeGraph:
                 author_uri = URIRef(self.EX[_url_encode_author(author_name)])
 
                 if not (author_uri, RDF.type, FOAF.Person) in self.graph:
-                    print(f"Author {author_name} not found in the graph")
+                    # print(f"Author {author_name} not found in the graph")
                     return
 
                 self.graph.add((book_uri, self.SCHEMA.Author, author_uri))
@@ -119,27 +119,27 @@ class KnowledgeGraph:
         # add all properties
         self.graph.add((author_uri, FOAF.name, Literal(author_name)))
         self.add_property(author_uri, self.EX.BirthDate, entry['birth_date'])
-        self.add_property(author_uri, self.EX.BirthPlace, entry['birth_place'])
         self.add_property(author_uri, self.EX.DeathDate, entry['death_date'])
         self.add_property(author_uri, self.EX.ProperlyProcessed, entry['properly_processed'])
 
         if entry['birth_country']:
-            country_uri = URIRef(self.EX[entry['birth_country']])
+            birth_country = entry['birth_country'].strip()
+            country_uri = URIRef(self.EX[birth_country.replace(' ', '_')])
             if not (country_uri, RDF.type, self.SCHEMA.Country) in self.graph:
                 self.graph.add((country_uri, RDF.type, self.SCHEMA.Country))
-                self.graph.add((country_uri, self.SCHEMA.name, Literal(entry['birth_country'])))
+                self.graph.add((country_uri, self.SCHEMA.name, Literal(birth_country)))
 
             self.graph.add((author_uri, self.EX.birthCountry, country_uri))
 
         if entry['genres']:
-            genres = entry['genres'].split(',')
+            genres = entry['genres'].split(';')
 
             for genre in genres:
-                genre = genre.strip()
-                genre_uri = URIRef(self.EX[genre.replace(genre, '')])
+                genre = genre.replace('_', ' ').replace('(genre)', '').strip()
+                genre_uri = URIRef(self.EX[genre.replace(' ', '_')])
                 if not (genre_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
                     self.graph.add((genre_uri, RDF.type, self.SCHEMA.Genre))
-                    self.graph.add((genre_uri, self.SCHEMA.name, Literal(genre.replace('_', ' '))))
+                    self.graph.add((genre_uri, self.SCHEMA.name, Literal(genre)))
 
                 self.graph.add((author_uri, self.EX.genre, genre_uri))
 
