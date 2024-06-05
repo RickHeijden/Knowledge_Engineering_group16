@@ -42,7 +42,6 @@ class Preprocessing:
                         [
                             "author",
                             "birth_date",
-                            "birth_place",
                             "birth_country",
                             "death_date",
                             "genres",
@@ -141,7 +140,7 @@ class Preprocessing:
 
     def get_authors(self) -> list[str]:
         return filter(_filter_weird_authors, list(
-            self.__dataframe['author'].map(_clean_author).str.split(';').explode().map(lambda s: s.strip()).unique()))
+            self.__dataframe['author'].map(_clean_author).str.split(';').explode().str.split(' and ').explode().map(lambda s: s.strip()).unique()))
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
@@ -212,13 +211,15 @@ class Preprocessing:
 
 
 if __name__ == '__main__':
-    if not os.path.exists('datasets/processed.csv'):
-        df: pd.DataFrame = pd.read_csv('datasets/combined.csv')
+    processed_filename = 'datasets/processed2.csv'
+    author_info_filename = 'datasets/author_info2.csv'
+    if not os.path.exists(processed_filename):
+        df: pd.DataFrame = pd.read_csv('datasets/combined_filtered.csv')
         preprocessing: Preprocessing = Preprocessing(df)
         preprocessing.process()
         df = preprocessing.get_df()
-        df.to_csv('datasets/processed.csv', index=False)
+        df.to_csv(processed_filename, index=False)
     else:
-        df: pd.DataFrame = pd.read_csv('datasets/processed.csv')
+        df: pd.DataFrame = pd.read_csv(processed_filename)
         preprocessing: Preprocessing = Preprocessing(df)
-    preprocessing.create_author_info('datasets/author_info.csv')
+    preprocessing.create_author_info(author_info_filename)
