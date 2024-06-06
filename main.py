@@ -74,6 +74,8 @@ if __name__ == '__main__':
         combined_dataframe = pd.concat([combined_dataframe, combined_dataframe_without_isbn13], ignore_index=True)
         print(len(combined_dataframe))
 
+        combined_dataframe['title'] = combined_dataframe['title'].str.lower()
+
         # Same for title and author
         combined_dataframe_without_title_author = \
             combined_dataframe[combined_dataframe['title'].isnull() | combined_dataframe['author'].isnull()]
@@ -89,11 +91,12 @@ if __name__ == '__main__':
     def process_authors(author: str):
         if pd.isnull(author):
             return author
-        original_author = author
 
+        # Replace special characters with normal ones
         author = author.replace('’', "'")
         author = author.replace('–', '-')
         author = author.replace('“', '"')
+        author = re.sub(r'\u2009', ' ', author)
 
         # Remove any 'PhD' or 'Ph.D.' (case-insensitive)
         author = re.sub(r'(?i)\bph\.?d\.?\b', '', author)
@@ -160,8 +163,12 @@ if __name__ == '__main__':
         # Replace any 'created' by ';' in the middle (case-insensitive)
         author = re.sub(r'(?i)\bcreated\b', ';', author)
 
-        # Remove any 'edited' or 'written', etc (case-insensitive)
-        author = re.sub(r'(?i)(edited|written|adapted|created|lyrics|from texts|novelization|compiled|admiral)', '', author)
+        # Remove any 'edited' or 'written', etc (case-insensitive), yes illlustrated is with 3 l's
+        author = re.sub(
+            r'(?i)(edited|written|adapted|created|lyrics|from texts|novelization|compiled|admiral|introduced|selected|illlustrated|from PopularMMOs)',
+            '',
+            author,
+        )
 
         # Remove any 'various authors' or 'various illustrators' or 'various authors and artists' (case-insensitive)
         author = re.sub(r'(?i)various\s?(authors( and artists)?|illustrators)?', '', author)
@@ -251,10 +258,10 @@ if __name__ == '__main__':
         return author
 
 
-    words_to_split_author = [' and ', ',', '&', ' with ']
+    def split_authors(author, words_to_split_author=None):
+        if words_to_split_author is None:
+            words_to_split_author = [' and ', ',', '&', ' with ']
 
-
-    def split_authors(author):
         if pd.isnull(author):
             return author
 
@@ -269,14 +276,52 @@ if __name__ == '__main__':
         return ';'.join([a.strip() for a in split_authors if a.strip() != ''])
 
 
+    def formalize_initials(author):
+        if pd.isnull(author):
+            return author
+
+        # Find any pattern that matches initials of length up to 3
+        # An initial is a capital letter with or without a dot
+        #  preceded by a space or a word boundary and followed by a space
+        # The initials are followed up by a last name, which is a word of at least 2 letters.
+        results = re.finditer(r'\b[A-Z]\.?[\s\b]*([A-Z]\.?)?[\s\b]*([A-Z]\.?)?[\s\b]+\w{2,}', author)
+        # We will replace initials to make them conform, but this shifts the string, we keep track of this
+        start_diff = 0
+
+        for result in results:
+            # DK/RPG are publishers that falls under this pattern, so we skip it.
+            if not result.group().startswith('DK ') and not result.group().startswith('RPG'):
+                # Finding the last name of the author
+                name = re.search(r'[\s\b]+\w{2,}', result.group())
+
+                # Finding the positions of the initials of the author
+                start_initials = result.start() + start_diff
+                end_initials = start_initials + name.start()
+
+                # Extracting the initials and making it such that each initial is followed by a dot and a space
+                #  we make sure that first dots and spaces are removed to avoid duplications of dots and spaces
+                initials = author[start_initials:end_initials].replace('.', '')
+                initials = re.sub(r'[\s\b]+', '', initials)
+                initials = re.sub(r'[A-Z]', (lambda x: x.group() + '. '), initials).strip()
+
+                # Adjust the starting difference by the change in length of the initials
+                start_diff += len(initials) - (end_initials - start_initials)
+
+                # Replace the initials in the author string
+                author = author[:start_initials] + initials + author[end_initials:]
+
+        return author
+
+
     # Apply the function to the 'author' column
     combined_dataframe['author'] = combined_dataframe['author'].apply(process_authors)
     combined_dataframe['author'] = combined_dataframe['author'].apply(split_authors)
+    combined_dataframe['author'] = combined_dataframe['author'].apply(formalize_initials)
 
-    # Same for title and author
-    # combined_dataframe_without_title_author = \
-    #     combined_dataframe[combined_dataframe['title'].isnull() | combined_dataframe['author'].isnull()]
-    # combined_dataframe = combined_dataframe.groupby(['title', 'author'], as_index=False).agg(combine_rows)
-    # combined_dataframe = pd.concat([combined_dataframe, combined_dataframe_without_title_author], ignore_index=True)
+    # Reapplying combining title and author matches
+    combined_dataframe_without_title_author = \
+        combined_dataframe[combined_dataframe['title'].isnull() | combined_dataframe['author'].isnull()]
+    combined_dataframe = combined_dataframe.groupby(['title', 'author'], as_index=False).agg(combine_rows)
+    combined_dataframe = pd.concat([combined_dataframe, combined_dataframe_without_title_author], ignore_index=True)
 
     combined_dataframe.to_csv(directory + 'combined_filtered.csv', index=False)
