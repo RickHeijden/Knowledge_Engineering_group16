@@ -53,7 +53,7 @@ def add_publisher(df):
             print(f"Added publisher {found_publisher} to row {index}")
 
 
-# TODO: Use multithreading to speed up the process
+# TODO: Use multithreading to speed up the process?
 def get_publisher_using_api_call_on_isbn(isbn):
     found_publisher = get_publisher_from_open_library(isbn)
     if not found_publisher:
@@ -68,7 +68,7 @@ def get_publisher_from_google_books(isbn):
         data = response.json()
         if 'items' in data:
             found_publisher = data['items'][0]['volumeInfo'].get('publisher', 'Publisher not found')
-            return publisher
+            return found_publisher
     return 'Publisher not found'
 
 
