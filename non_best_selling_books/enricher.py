@@ -16,7 +16,7 @@ def extract_isbn(book):
 
 
 def fetch_additional_details(isbn):
-    url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}&key=your_google_api_key"
+    url = f'https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}'
     response = requests.get(url)
     if response.status_code == 200:
         items = response.json().get('items', [])
