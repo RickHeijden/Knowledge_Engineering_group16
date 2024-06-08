@@ -111,11 +111,9 @@ class DataRetriever:
             ?countryName
             ?deathDate
             (GROUP_CONCAT(DISTINCT ?genre; separator=", ") as ?genres)
-            (GROUP_CONCAT(DISTINCT ?influenced; separator=", ") as ?influenced)
-            (GROUP_CONCAT(DISTINCT ?influencedBy; separator=", ") as ?influencedBys)
         WHERE {
             {
-                SELECT DISTINCT ?author ?abstract ?birthDate ?countryName ?deathDate ?genre ?influenced ?influencedBy (SAMPLE(?isWriter) as ?writerSample)
+                SELECT DISTINCT ?author ?abstract ?birthDate ?countryName ?deathDate ?genre (SAMPLE(?isWriter) as ?writerSample)
                 WHERE {
                     ?author dbp:name "%s"@en ;
                             dbo:abstract ?abstract .
@@ -137,11 +135,9 @@ class DataRetriever:
                     }
                     OPTIONAL { ?author dbo:deathDate ?deathDate . }
                     OPTIONAL { ?author dbo:genre ?genre . }
-                    OPTIONAL { ?author dbo:influenced ?influenced . }
-                    OPTIONAL { ?author dbo:influencedBy ?influencedBy . }
                     FILTER (lang(?abstract) = 'en')
                 }
-                GROUP BY ?author ?abstract ?birthDate ?countryName ?deathDate ?genre ?influenced ?influencedBy
+                GROUP BY ?author ?abstract ?birthDate ?countryName ?deathDate ?genre
             }
             FILTER (!BOUND(?writerSample) || ?writerSample = true)
         }
