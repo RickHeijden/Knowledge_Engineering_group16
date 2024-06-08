@@ -122,6 +122,21 @@ class KnowledgeGraph:
         self.add_property(author_uri, self.SCHEMA.DeathDate, entry['death_date'])
         self.add_property(author_uri, self.SCHEMA.ProperlyProcessed, entry['properly_processed'])
 
+        if entry['birth_date']:
+            year = entry['birth_date']
+            if '-' in year:
+                year = year.split('-')[0]
+            elif '/' in year:
+                year = year.split('/')[2]
+
+            year_uri = URIRef(self.SCHEMA[year])
+
+            if not (year_uri, RDF.type, self.SCHEMA.Year) in self.graph:
+                self.graph.add((year_uri, RDF.type, self.SCHEMA.Year))
+                self.graph.add((year_uri, self.SCHEMA.Value, Literal(year)))
+
+            self.graph.add((author_uri, self.SCHEMA.year, year_uri))
+
         if entry['birth_country']:
             birth_country = entry['birth_country'].strip()
             country_uri = URIRef(self.SCHEMA['country_' + birth_country.strip().replace(' ', '_')])
