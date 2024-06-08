@@ -26,11 +26,9 @@ class KnowledgeGraph:
         self.graph = Graph()
 
         # Define namespaces
-        self.EX = Namespace("http://example.org/")
         self.SCHEMA = Namespace("http://schema.org/")
 
         # Add namespaces to the graph
-        self.graph.bind("ex", self.EX)
         self.graph.bind("schema", self.SCHEMA)
         self.graph.bind("foaf", FOAF)
 
@@ -41,22 +39,22 @@ class KnowledgeGraph:
             return
 
         isbn = entry['isbn13']
-        book_uri = URIRef(self.EX[isbn])  # Book url is the isbn
+        book_uri = URIRef(self.SCHEMA[isbn])  # Book url is the isbn
 
         if entry['author']:
             authors = filter(_filter_weird_authors, _clean_author(entry['author']).split(';'))
             for author_name in authors:
                 author_name = author_name.strip()
-                author_uri = URIRef(self.EX[_url_encode_author(author_name)])
+                author_uri = URIRef(self.SCHEMA[_url_encode_author(author_name)])
 
                 if not (author_uri, RDF.type, FOAF.Person) in self.graph:
                     # print(f"Author {author_name} not found in the graph")
                     return
 
-                self.graph.add((book_uri, self.SCHEMA.Author, author_uri))
+                self.graph.add((book_uri, self.SCHEMA.author, author_uri))
 
-        self.graph.add((book_uri, self.SCHEMA.identifier, Literal(isbn)))  # Add isbn as identifier
-        self.graph.add((book_uri, RDF.type, self.SCHEMA.book))
+        self.graph.add((book_uri, self.SCHEMA.Value, Literal(isbn)))  # Add isbn as identifier
+        self.graph.add((book_uri, RDF.type, self.SCHEMA.Book))
         self.add_property(book_uri, self.SCHEMA.Name, entry['title'])
         self.add_property(book_uri, self.SCHEMA.Rank, entry['rank'])
         self.add_property(book_uri, self.SCHEMA.Rating, entry['rating'])
@@ -67,19 +65,21 @@ class KnowledgeGraph:
             categories = entry['categories'][1:-1].replace('"', '').split(',')
 
             for category in categories:
-                category_uri = URIRef(self.EX[category.replace(' ', '_')])
-                if not (category_uri, RDF.type, self.SCHEMA.Category) in self.graph:
-                    self.graph.add((category_uri, RDF.type, self.SCHEMA.Category))
-                    self.graph.add((category_uri, self.SCHEMA.name, Literal(category)))
+                if category == 'Books':
+                    continue  # Trivial
+                category_uri = URIRef(self.SCHEMA[category.strip().replace(' ', '_')])
+                if not (category_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
+                    self.graph.add((category_uri, RDF.type, self.SCHEMA.Genre))
+                    self.graph.add((category_uri, self.SCHEMA.Value, Literal(category)))
 
-                self.graph.add((book_uri, self.SCHEMA.category, category_uri))
+                self.graph.add((book_uri, self.SCHEMA.genre, category_uri))
 
         if entry['publisher']:
-            publisher_uri = URIRef(self.EX[entry['publisher'].replace(' ', '_')])
+            publisher_uri = URIRef(self.SCHEMA[entry['publisher'].strip().replace(' ', '_')])
 
             if not (publisher_uri, RDF.type, self.SCHEMA.Publisher) in self.graph:
                 self.graph.add((publisher_uri, RDF.type, self.SCHEMA.Publisher))
-                self.graph.add((publisher_uri, self.SCHEMA.name, Literal(entry['publisher'])))
+                self.graph.add((publisher_uri, self.SCHEMA.Value, Literal(entry['publisher'])))
 
             self.graph.add((book_uri, self.SCHEMA.publisher, publisher_uri))
 
@@ -90,11 +90,11 @@ class KnowledgeGraph:
             elif '/' in year:
                 year = year.split('/')[2]
 
-            year_uri = URIRef(self.EX[year])
+            year_uri = URIRef(self.SCHEMA[year])
 
             if not (year_uri, RDF.type, self.SCHEMA.Year) in self.graph:
                 self.graph.add((year_uri, RDF.type, self.SCHEMA.Year))
-                self.graph.add((year_uri, self.SCHEMA.year, Literal(year)))
+                self.graph.add((year_uri, self.SCHEMA.Value, Literal(year)))
 
             self.graph.add((book_uri, self.SCHEMA.year, year_uri))
 
@@ -110,38 +110,38 @@ class KnowledgeGraph:
 
         # Column values: author, birth_date, birth_place, birth_countries, death_date, genres, properly_processed
         author_name = entry['author']
-        author_uri = URIRef(self.EX[_url_encode_author(author_name)])
+        author_uri = URIRef(self.SCHEMA[_url_encode_author(author_name)])
 
         if (author_uri, RDF.type, FOAF.Person) in self.graph:
             return
 
         self.graph.add((author_uri, RDF.type, FOAF.Person))
         # add all properties
-        self.graph.add((author_uri, FOAF.name, Literal(author_name)))
-        self.add_property(author_uri, self.EX.BirthDate, entry['birth_date'])
-        self.add_property(author_uri, self.EX.DeathDate, entry['death_date'])
-        self.add_property(author_uri, self.EX.ProperlyProcessed, entry['properly_processed'])
+        self.graph.add((author_uri, self.SCHEMA.Value, Literal(author_name)))
+        self.add_property(author_uri, self.SCHEMA.BirthDate, entry['birth_date'])
+        self.add_property(author_uri, self.SCHEMA.DeathDate, entry['death_date'])
+        self.add_property(author_uri, self.SCHEMA.ProperlyProcessed, entry['properly_processed'])
 
         if entry['birth_country']:
             birth_country = entry['birth_country'].strip()
-            country_uri = URIRef(self.EX[birth_country.replace(' ', '_')])
+            country_uri = URIRef(self.SCHEMA['country_' + birth_country.strip().replace(' ', '_')])
             if not (country_uri, RDF.type, self.SCHEMA.Country) in self.graph:
                 self.graph.add((country_uri, RDF.type, self.SCHEMA.Country))
-                self.graph.add((country_uri, self.SCHEMA.name, Literal(birth_country)))
+                self.graph.add((country_uri, self.SCHEMA.Value, Literal(birth_country)))
 
-            self.graph.add((author_uri, self.EX.birthCountry, country_uri))
+            self.graph.add((author_uri, self.SCHEMA.birthCountry, country_uri))
 
         if entry['genres']:
             genres = entry['genres'].split(';')
 
             for genre in genres:
                 genre = genre.replace('_', ' ').replace('(genre)', '').strip()
-                genre_uri = URIRef(self.EX[genre.replace(' ', '_')])
+                genre_uri = URIRef(self.SCHEMA[genre.replace(' ', '_')])
                 if not (genre_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
                     self.graph.add((genre_uri, RDF.type, self.SCHEMA.Genre))
-                    self.graph.add((genre_uri, self.SCHEMA.name, Literal(genre)))
+                    self.graph.add((genre_uri, self.SCHEMA.Value, Literal(genre)))
 
-                self.graph.add((author_uri, self.EX.genre, genre_uri))
+                self.graph.add((author_uri, self.SCHEMA.genre, genre_uri))
 
     def load_authors_csv(self, file: str):
         df = pd.read_csv(file).fillna(False)
@@ -156,7 +156,7 @@ class KnowledgeGraph:
 
 if __name__ == '__main__':
     kg = KnowledgeGraph()
-    kg.load_authors_csv('datasets/author_info.csv')
+    kg.load_authors_csv('datasets/author_info2.csv')
     kg.load_books_csv('datasets/processed.csv')
     kg.graph.serialize('graph.rdf', format='xml')
     print("Graph saved as graph.rdf")
