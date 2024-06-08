@@ -1,3 +1,4 @@
+import os
 import time
 
 import pandas as pd
@@ -19,20 +20,50 @@ def extract_authors(file_path):
     return authors_df['author'].tolist()
 
 
+def save_intermediate_results(data, save_path):
+    # Ensure directory exists
+    directory = os.path.dirname(save_path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    data.to_csv(save_path, index=False)
+
+
+def load_intermediate_results(file_path):
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path)
+    return pd.DataFrame(columns=['title', 'author', 'isbn13', 'isbn10', 'rating', 'description',
+                                 'publisher', 'categories', 'country_of_publication'])
+
+
 def fetch_books_by_author(author):
     url = f'http://openlibrary.org/search.json?author={author}'
     response = requests.get(url)
     if response.status_code == 200:
-        return response.json().get('docs', [])
+        books = response.json().get('docs', [])
+
+        # Keep track of titles encountered
+        titles_seen = set()
+        unique_books = []
+
+        # Filter out duplicate titles
+        for book in books:
+            title = book.get('title')
+            if title not in titles_seen:
+                unique_books.append(book)
+                titles_seen.add(title)
+
+        return unique_books
+
     return []
 
 
 def is_bestseller(book_to_check, best_selling_books_dict):
     best_selling_author = book_to_check.get('author_name')
-    title = book_to_check.get('title')
+    title = book_to_check.get('title').lower()  # Convert title to lowercase for case-insensitive comparison
     if isinstance(best_selling_author, list):
         best_selling_author = best_selling_author[0]  # Use the first author if it's a list
-    return best_selling_author in best_selling_books_dict and title in best_selling_books_dict[best_selling_author]
+    return best_selling_author in best_selling_books_dict and \
+           title in map(str.lower, best_selling_books_dict[best_selling_author])
 
 
 def filter_non_best_selling_books(author_books_to_filter, best_selling_books_dict):
@@ -71,7 +102,11 @@ def extract_isbn(book_to_extract_from):
 if __name__ == '__main__':
     authors = extract_authors('../datasets/author_info2.csv')
     best_selling_books = extract_best_selling_books('../datasets/combined_filtered.csv')
+    non_best_selling_books_path = '../datasets/non_best_selling_books.csv'
     non_best_selling_books = []
+
+    # Load previously saved intermediate results
+    non_best_selling_books_df = load_intermediate_results(non_best_selling_books_path)
 
     print("Number of authors: " + str(len(authors)))
     api_calls_count = 0
@@ -79,14 +114,31 @@ if __name__ == '__main__':
     for author in authors:
         author_books = fetch_books_by_author(author)
         api_calls_count += 1
+
         if api_calls_count % 50 == 0:
             end_time = time.time()
             duration_minutes = (end_time - start_time) / 60.0
             api_calls_per_minute = api_calls_count / duration_minutes
             print(str(api_calls_count) + " api calls so far")
             print("api calls per minutes: " + str(api_calls_per_minute))
+
+        # Save intermediate results every 500 retrievals
+        if api_calls_count % 500 == 0:
+            df_to_append = pd.DataFrame(non_best_selling_books)
+            non_best_selling_books_df = pd.concat([non_best_selling_books_df, df_to_append], ignore_index=True)
+            save_intermediate_results(non_best_selling_books_df, non_best_selling_books_path)
+            non_best_selling_books = []  # Reset the list after saving
+
         non_best_selling = filter_non_best_selling_books(author_books, best_selling_books)
+
         for book in non_best_selling:
+            # If it's already in the data, skip it
+            # If it's already in the data, skip it
+            if not non_best_selling_books_df[
+                (non_best_selling_books_df['title'] == book.get('title')) &
+                (non_best_selling_books_df['author'] == author)
+            ].empty:
+                continue
             isbn13, isbn10 = extract_isbn(book)
             non_best_selling_books.append({
                 'title': book.get('title'),
@@ -100,6 +152,5 @@ if __name__ == '__main__':
                 'country_of_publication': book.get('publish_country')
             })
 
-    # Convert list to DataFrame and write to CSV
-    non_best_selling_books_df = pd.DataFrame(non_best_selling_books)
-    non_best_selling_books_df.to_csv('../datasets/non_best_selling_books.csv', index=False)
+        # Save final results
+        save_intermediate_results(non_best_selling_books_df, non_best_selling_books_path)
