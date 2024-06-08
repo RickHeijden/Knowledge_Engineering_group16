@@ -62,8 +62,26 @@ def is_bestseller(book_to_check, best_selling_books_dict):
     title = book_to_check.get('title').lower()  # Convert title to lowercase for case-insensitive comparison
     if isinstance(best_selling_author, list):
         best_selling_author = best_selling_author[0]  # Use the first author if it's a list
-    return best_selling_author in best_selling_books_dict and \
-           title in map(str.lower, best_selling_books_dict[best_selling_author])
+
+    # Check if the book is in the list of best-selling books
+    is_best_selling = best_selling_author in best_selling_books_dict and \
+                      title in map(str.lower, best_selling_books_dict[best_selling_author])
+
+    if is_best_selling:
+        rating = book_to_check.get('rating')
+        publication_year = book_to_check.get('publication_year')
+        sales_count = book_to_check.get('sales_count')
+        review_count = book_to_check.get('review_count')
+
+        # Add more conditions here if needed
+        is_best_selling = (
+                (rating is None or rating >= 4.0) and
+                (publication_year is None or publication_year >= 2010) and
+                (sales_count is None or sales_count >= 1000) and
+                (review_count is None or review_count >= 100)
+        )
+
+    return is_best_selling
 
 
 def filter_non_best_selling_books(author_books_to_filter, best_selling_books_dict):
@@ -107,11 +125,16 @@ if __name__ == '__main__':
 
     # Load previously saved intermediate results
     non_best_selling_books_df = load_intermediate_results(non_best_selling_books_path)
+    already_retrieved_authors = set()
+    if len(non_best_selling_books_df) > 0:
+        already_retrieved_authors = set(non_best_selling_books_df['author'].unique())
 
     print("Number of authors: " + str(len(authors)))
     api_calls_count = 0
     start_time = time.time()
     for author in authors:
+        if author in already_retrieved_authors:
+            continue
         author_books = fetch_books_by_author(author)
         api_calls_count += 1
 
@@ -152,5 +175,8 @@ if __name__ == '__main__':
                 'country_of_publication': book.get('publish_country')
             })
 
-        # Save final results
-        save_intermediate_results(non_best_selling_books_df, non_best_selling_books_path)
+        df_to_append = pd.DataFrame(non_best_selling_books)
+        non_best_selling_books_df = pd.concat([non_best_selling_books_df, df_to_append], ignore_index=True)
+        non_best_selling_books = []  # Reset the list after appending to the DataFrame
+    # Save final results
+    save_intermediate_results(non_best_selling_books_df, non_best_selling_books_path)
