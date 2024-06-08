@@ -45,8 +45,6 @@ class Preprocessing:
                             "birth_country",
                             "death_date",
                             "genres",
-                            "influenced",
-                            "influenced_by",
                             "properly_processed",
                         ]
                     )
@@ -60,8 +58,6 @@ class Preprocessing:
                     birth_country: str,
                     death_date: str,
                     genres: str,
-                    influenced: str,
-                    influenced_by: str,
                     properly_processed: bool,
             ):
                 """Write a line to the CSV file."""
@@ -75,8 +71,6 @@ class Preprocessing:
                                 birth_country,
                                 death_date,
                                 genres,
-                                influenced,
-                                influenced_by,
                                 properly_processed,
                             ],
                         )
@@ -95,8 +89,6 @@ class Preprocessing:
                     'birthCountry': '',
                     'deathDate': '',
                     'genres': '',
-                    'influenced': '',
-                    'influencedBy': '',
                     'properlyProcessed': False,
                 }
 
@@ -119,12 +111,6 @@ class Preprocessing:
                             author_info_row['genres'] = author_info['genres']['value'].replace(
                                 'http://dbpedia.org/resource/', '').replace(',', ';')
 
-                        if 'influenced' in author_info and author_info['influenced']:
-                            author_info_row['influenced'] = author_info['influenced']['value'].replace(',', ';')
-
-                        if 'influencedBy' in author_info and author_info['influencedBy']:
-                            author_info_row['influencedBy'] = author_info['influencedBy']['value'].replace(',', ';')
-
                         author_info_row['properlyProcessed'] = True
 
                 write_line(
@@ -133,8 +119,6 @@ class Preprocessing:
                     author_info_row['birthCountry'],
                     author_info_row['deathDate'],
                     author_info_row['genres'],
-                    author_info_row['influenced'],
-                    author_info_row['influencedBy'],
                     author_info_row['properlyProcessed']
                 )
 
