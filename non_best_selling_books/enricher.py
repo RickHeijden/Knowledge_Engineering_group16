@@ -47,14 +47,13 @@ def save_intermediate_results(data, save_path):
 
 if __name__ == '__main__':
     non_best_selling_books_path = '../datasets/non_best_selling_books_filtered.csv'
-    intermediate_results_path = '../datasets/intermediate_enriched_non_best_selling_books.csv'
-    final_results_path = '../datasets/enriched_non_best_selling_books.csv'
+    final_results_path = '../datasets/non_best_selling_books_filtered_enriched.csv'
 
     # Read the filtered non_best_selling_books.csv file
     non_best_selling_books_df = pd.read_csv(non_best_selling_books_path)
 
     # Load previously saved intermediate results
-    enriched_books_df = load_intermediate_results(intermediate_results_path)
+    enriched_books_df = load_intermediate_results(final_results_path)
     enriched_books_titles = set(enriched_books_df['title'].unique())
 
     # List to hold updated book information
@@ -100,10 +99,7 @@ if __name__ == '__main__':
                 # Save intermediate results every 100 API calls
                 if api_calls_count % 100 == 0:
                     enriched_books_df = pd.DataFrame(enriched_books)
-                    save_intermediate_results(enriched_books_df, intermediate_results_path)
-
-                # Adding a delay to avoid hitting the API rate limit
-                time.sleep(1)
+                    save_intermediate_results(enriched_books_df, final_results_path)
 
         enriched_books.append(book.to_dict())
 
