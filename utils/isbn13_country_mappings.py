@@ -253,8 +253,7 @@ language_group_map = {
 
 def get_country_from_isbn(isbn):
     if not type(isbn) == str:
-        print('ISBN must be a string')
-        return None
+        isbn = str(isbn)
     if isbn.startswith('978'):
         isbn_prefix = isbn[3:]
     elif isbn.startswith('979'):
