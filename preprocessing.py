@@ -75,7 +75,7 @@ class Preprocessing:
             authors: list[str] = self.get_authors()
 
             for author in authors:
-                # author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
+                author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
 
                 author_info_row: dict[str, str | bool] = {
                     'author': author,
@@ -86,26 +86,26 @@ class Preprocessing:
                     'properlyProcessed': False,
                 }
 
-                # if author_info:
-                #     author_info = author_info['results']['bindings']
-                #
-                #     if len(author_info) > 0:
-                #         author_info = author_info[0]
-                #
-                #         if 'birthDate' in author_info and author_info['birthDate']:
-                #             author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
-                #
-                #         if 'countryName' in author_info and author_info['countryName']:
-                #             author_info_row['birthCountry'] = author_info['countryName']['value']
-                #
-                #         if 'deathDate' in author_info and author_info['deathDate']:
-                #             author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
-                #
-                #         if 'genres' in author_info and author_info['genres']:
-                #             author_info_row['genres'] = author_info['genres']['value'].replace(
-                #                 'http://dbpedia.org/resource/', '').replace(',', ';')
-                #
-                #         author_info_row['properlyProcessed'] = True
+                if author_info:
+                    author_info = author_info['results']['bindings']
+
+                    if len(author_info) > 0:
+                        author_info = author_info[0]
+
+                        if 'birthDate' in author_info and author_info['birthDate']:
+                            author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
+
+                        if 'countryName' in author_info and author_info['countryName']:
+                            author_info_row['birthCountry'] = author_info['countryName']['value']
+
+                        if 'deathDate' in author_info and author_info['deathDate']:
+                            author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
+
+                        if 'genres' in author_info and author_info['genres']:
+                            author_info_row['genres'] = author_info['genres']['value'].replace(
+                                'http://dbpedia.org/resource/', '').replace(',', ';')
+
+                        author_info_row['properlyProcessed'] = True
 
                 write_line(
                     author_info_row['author'],
