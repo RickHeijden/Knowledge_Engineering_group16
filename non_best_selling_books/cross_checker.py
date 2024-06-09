@@ -1,13 +1,22 @@
 """
-Goal: Cross check the generated non-best selling books csv with the best selling one.
+Goal: Cross-check the generated non-best selling books csv with the best selling one based on title containment.
 
 Use after retrieving them -> retriever.py
 """
 
 import pandas as pd
-import requests
+import os
 
-from non_best_selling_books.retriever import extract_best_selling_books, extract_authors
+
+def extract_best_selling_books(file_path):
+    best_selling_books_df = pd.read_csv(file_path)
+    best_selling_books = []
+    for _, row in best_selling_books_df.iterrows():
+        best_selling_books.append({
+            'author': row['author'],
+            'title': row['title']
+        })
+    return best_selling_books
 
 
 def create_author_book_dict(books):
@@ -16,8 +25,8 @@ def create_author_book_dict(books):
     """
     author_book_dict = {}
     for book in books:
-        author = book.get('author')
-        title = book.get('title')
+        author = book['author']
+        title = book['title']
         if author not in author_book_dict:
             author_book_dict[author] = []
         author_book_dict[author].append(title)
@@ -32,26 +41,40 @@ def is_contained(title1, title2):
 
 
 if __name__ == "__main__":
-    authors = extract_authors('../datasets/author_info2.csv')
     best_selling_books = extract_best_selling_books('../datasets/combined_filtered.csv')
-    non_best_selling_books = []
+    non_best_selling_books_df = pd.read_csv('../datasets/non_best_selling_books.csv')
 
     # Create dictionaries mapping authors to their books
     best_selling_author_books = create_author_book_dict(best_selling_books)
-    non_best_selling_author_books = create_author_book_dict(non_best_selling_books)
+    non_best_selling_author_books = create_author_book_dict(non_best_selling_books_df.to_dict(orient='records'))
+
+    # Initialize a list to keep track of non-best-selling books to keep
+    books_to_keep = []
 
     # Check for containment in best-selling books
-    for author, books in best_selling_author_books.items():
-        for title in books:
-            # Check if the title is contained in any other title of the same author in non-best selling books
-            for other_title in non_best_selling_author_books.get(author, []):
-                if is_contained(title, other_title):
-                    print(f"'{title}' is contained in '{other_title}'")
+    for _, row in non_best_selling_books_df.iterrows():
+        author = row['author']
+        title = row['title']
+        if author in best_selling_author_books:
+            is_contained_flag = False
+            for best_selling_title in best_selling_author_books[author]:
+                if is_contained(title, best_selling_title):
+                    print(f"'{title}' by {author} is contained in '{best_selling_title}'")
+                    is_contained_flag = True
+                    break
+            if not is_contained_flag:
+                books_to_keep.append(row)
+        else:
+            books_to_keep.append(row)
 
-    # Check for containment in non-best selling books
-    for author, books in non_best_selling_author_books.items():
-        for title in books:
-            # Check if the title is contained in any other title of the same author in best-selling books
-            for other_title in best_selling_author_books.get(author, []):
-                if is_contained(title, other_title):
-                    print(f"'{title}' is contained in '{other_title}'")
+    # Convert the list of books to keep into a DataFrame
+    remaining_books_df = pd.DataFrame(books_to_keep)
+
+    # Save the remaining books to a new CSV file
+    new_file_path = '../datasets/non_best_selling_books_filtered.csv'
+    directory = os.path.dirname(new_file_path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)
+    remaining_books_df.to_csv(new_file_path, index=False)
+    print(f"Kept {len(books_to_keep)} out of {len(non_best_selling_books_df)}")
+    print(f"Filtered non-best-selling books saved to {new_file_path}")
