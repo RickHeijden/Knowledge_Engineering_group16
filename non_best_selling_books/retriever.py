@@ -130,6 +130,7 @@ if __name__ == '__main__':
         already_retrieved_authors = set(non_best_selling_books_df['author'].unique())
 
     print("Number of authors: " + str(len(authors)))
+    print("Number of authors whose books were already fetched: " + str(len(already_retrieved_authors)))
     api_calls_count = 0
     start_time = time.time()
     for author in authors:
