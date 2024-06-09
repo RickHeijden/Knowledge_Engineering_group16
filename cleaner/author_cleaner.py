@@ -3,10 +3,10 @@ import re
 
 
 def clean_authors(authors_series: pd.Series):
-    return authors_series.apply(process_authors).apply(split_authors).apply(formalize_initials)
+    return authors_series.apply(cleaning_authors).apply(split_authors).apply(formalize_initials)
 
 
-def process_authors(author: str):
+def cleaning_authors(author: str):
     if pd.isnull(author):
         return author
 
@@ -50,19 +50,18 @@ def process_authors(author: str):
     # Changes strings with things like '(Narrator, Author)' to '(Author)'
     author = re.sub(r'\(\w+,\s+Author\)', '(Author)', author)
 
-    # Remove any 'Publisher' or 'Editor' or 'Illustrator' or 'Compiler' or 'Narrator', but not 'Author'
+    # Remove any 'Publisher' or 'Editor' or 'Illustrator' or 'Compiler', but not 'Author' and 'Narrator'
     author = ",".join([
         s for s in author.split(',')
-        if (('Publisher' not in s) and
+        if ((('Publisher' not in s) and
             ('Editor' not in s) and
             ('Illustrator' not in s) and
-            ('Compiler' not in s) and
-            ('Narrator' not in s))
-           or 'Author' in s
+            ('Compiler' not in s))
+            or 'Author' in s or 'Narrator' in s)
     ])
 
-    # Remove any (Author,) with (,) optional
-    author = re.sub(r'\(?Author,?\)?', '', author)
+    # Remove any (x,) with (,) optional, where x is 'Author' or 'Narrator'
+    author = re.sub(r'\(?(Author|Narrator),?\)?', '', author)
 
     # Handle special cases with the publisher DK
     author = (author
