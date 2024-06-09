@@ -59,6 +59,14 @@ def cleaning_authors(author: str):
             ('Compiler' not in s))
             or 'Author' in s or 'Narrator' in s)
     ])
+    author = ";".join([
+        s for s in author.split(';')
+        if ((('Publisher' not in s) and
+            ('Editor' not in s) and
+            ('Illustrator' not in s) and
+            ('Compiler' not in s))
+            or 'Author' in s or 'Narrator' in s)
+    ])
 
     # Remove any (x,) with (,) optional, where x is 'Author' or 'Narrator'
     author = re.sub(r'\(?(Author|Narrator),?\)?', '', author)
@@ -75,14 +83,14 @@ def cleaning_authors(author: str):
     author = re.sub(r'(?i)\(Foreword\)', '', author)
 
     # Remove any '- foreword', '- essay', etc (case-insensitive)
-    author = re.sub(r'(?i)- (foreword|essay|translator|abridgement and introduction)', '', author)
+    author = re.sub(r'(?i)- (introduction|foreword|essay|translator|abridgement( and introduction)?)', '', author)
 
     # Replace any 'created' by ';' in the middle (case-insensitive)
     author = re.sub(r'(?i)\bcreated\b', ';', author)
 
     # Remove any 'edited' or 'written', etc (case-insensitive), yes illlustrated is with 3 l's
     author = re.sub(
-        r'(?i)(edited|written|adapted|created|lyrics|from texts|novelization|compiled|admiral|introduced|selected|illlustrated|from PopularMMOs)',
+        r'(?i)(edited|written|adapted|created|lyrics|from texts|novelization|compiled|admiral|introduced|selected|illlustrated|Illustrations|from PopularMMOs)',
         '',
         author,
     )
@@ -94,10 +102,13 @@ def cleaning_authors(author: str):
     author = re.sub(r'(?i)with (an introduction|related materials)', '', author)
 
     # Remove any 'and others', 'with others', '& [some number] others' (case-insensitive)
-    author = re.sub(r'(?i)(and|with|& \d+) others', '', author)
+    author = re.sub(r'(?i)(and|with|(& )?\d+)?\s*others', '', author)
 
     # Remove any 'writing as' with any word characters and whitespace preceding (case-insensitive)
     author = re.sub(r'(?i)[\w\s]+writing as', '', author)
+
+    # Replace any 'as told to' by ';' in the middle (case-insensitive)
+    author = re.sub(r'(?i)as told to', ';', author)
 
     # Remove any 'photographs, 'translated', or 'designed' with any word characters and whitespace following
     #  (case-insensitive)
@@ -177,7 +188,7 @@ def cleaning_authors(author: str):
 
 def split_authors(author, words_to_split_author=None):
     if words_to_split_author is None:
-        words_to_split_author = [' and ', ',', '&', ' with ']
+        words_to_split_author = [' and ', ',', '&', ';with', ' with ', ';']
 
     if pd.isnull(author):
         return author
@@ -190,7 +201,7 @@ def split_authors(author, words_to_split_author=None):
         authors = [a for auth in authors for a in auth.split(word)]
 
     # Join the resulting list with ';'
-    return ';'.join([a.strip() for a in authors if a.strip() != ''])
+    return ';'.join([a.strip().strip('.,&;').strip() for a in authors if a.strip() != ''])
 
 
 def formalize_initials(author):
