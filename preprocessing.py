@@ -1,17 +1,11 @@
 import pandas as pd
 import os
+from cleaner import clean_authors
 from data_retriever import DataRetriever
 
 
 def _clean_author(author: str) -> str:
-    if type(author) is not str:
-        return ''
-    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Illustrator)', '').replace(
-        '(Author;Narrator)', '')
-
-
-def _filter_weird_authors(author: str) -> bool:
-    return author != '0 more' and 'Publisher' not in author and 'Compiler' not in author and 'Editor' not in author
+    return author if type(author) is str else ''
 
 
 class Preprocessing:
@@ -81,7 +75,7 @@ class Preprocessing:
             authors: list[str] = self.get_authors()
 
             for author in authors:
-                author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
+                # author_info: dict = self.__data_retriever.get_author_info_from_dbpedia(author)
 
                 author_info_row: dict[str, str | bool] = {
                     'author': author,
@@ -92,26 +86,26 @@ class Preprocessing:
                     'properlyProcessed': False,
                 }
 
-                if author_info:
-                    author_info = author_info['results']['bindings']
-
-                    if len(author_info) > 0:
-                        author_info = author_info[0]
-
-                        if 'birthDate' in author_info and author_info['birthDate']:
-                            author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
-
-                        if 'countryName' in author_info and author_info['countryName']:
-                            author_info_row['birthCountry'] = author_info['countryName']['value']
-
-                        if 'deathDate' in author_info and author_info['deathDate']:
-                            author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
-
-                        if 'genres' in author_info and author_info['genres']:
-                            author_info_row['genres'] = author_info['genres']['value'].replace(
-                                'http://dbpedia.org/resource/', '').replace(',', ';')
-
-                        author_info_row['properlyProcessed'] = True
+                # if author_info:
+                #     author_info = author_info['results']['bindings']
+                #
+                #     if len(author_info) > 0:
+                #         author_info = author_info[0]
+                #
+                #         if 'birthDate' in author_info and author_info['birthDate']:
+                #             author_info_row['birthDate'] = author_info['birthDate']['value'].replace(',', ';')
+                #
+                #         if 'countryName' in author_info and author_info['countryName']:
+                #             author_info_row['birthCountry'] = author_info['countryName']['value']
+                #
+                #         if 'deathDate' in author_info and author_info['deathDate']:
+                #             author_info_row['deathDate'] = author_info['deathDate']['value'].replace(',', ';')
+                #
+                #         if 'genres' in author_info and author_info['genres']:
+                #             author_info_row['genres'] = author_info['genres']['value'].replace(
+                #                 'http://dbpedia.org/resource/', '').replace(',', ';')
+                #
+                #         author_info_row['properlyProcessed'] = True
 
                 write_line(
                     author_info_row['author'],
@@ -123,8 +117,9 @@ class Preprocessing:
                 )
 
     def get_authors(self) -> list[str]:
-        return filter(_filter_weird_authors, list(
-            self.__dataframe['author'].map(_clean_author).str.split(';').explode().str.split(' and ').explode().map(lambda s: s.strip()).unique()))
+        authors = clean_authors(self.__dataframe['author'])
+
+        return authors.map(_clean_author).str.split(';').explode().str.strip().unique()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
         if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
@@ -195,7 +190,7 @@ class Preprocessing:
 
 
 if __name__ == '__main__':
-    processed_filename = 'datasets/processed2.csv'
+    processed_filename = 'datasets/processed.csv'
     author_info_filename = 'datasets/author_info2.csv'
     if not os.path.exists(processed_filename):
         df: pd.DataFrame = pd.read_csv('datasets/combined_filtered.csv')
