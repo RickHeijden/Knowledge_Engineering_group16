@@ -14,7 +14,8 @@ def add_missing_data_according_to_isbn(attribute='publisher'):
     # Check digit: 4
 
     # Open combined.csv, using pandas
-    df = pd.read_csv('datasets/combined.csv')
+    working_path = 'datasets/combined.csv'
+    df = pd.read_csv(working_path)
     # Create switch-case condition for the attribute
     if attribute not in df.columns:
         clear_values_for_field(df, attribute)
@@ -22,12 +23,12 @@ def add_missing_data_according_to_isbn(attribute='publisher'):
         add_publisher(df)
         return
     if attribute == 'country_of_publication':
-        add_country_of_publication(df)
+        add_country_of_publication(df, working_path)
         return
 
 
 # Add the county of publication based on the ISBN13 field
-def add_country_of_publication(df):
+def add_country_of_publication(df, working_file_path):
     for index, row in df.iterrows():
         file_country = row["country_of_publication"]
         if pd.isna(file_country) or not file_country:
@@ -37,7 +38,7 @@ def add_country_of_publication(df):
             df.at[index, 'country_of_publication'] = found_country
             print(f"Added country {found_country} to row {index}")
     # Save the csv
-    df.to_csv('datasets/combined.csv', index=False)
+    df.to_csv(working_file_path, index=False)
 
 
 def add_publisher(df):
