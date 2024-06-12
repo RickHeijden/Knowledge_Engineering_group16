@@ -9,7 +9,7 @@ def _clean_author(author: str) -> str:
 
 
 class Preprocessing:
-    __COLUMNS__: list[str] = ['title', 'author', 'year', 'publisher', 'rating', 'rank', 'categories', 'description']
+    __COLUMNS__: list[str] = ['title', 'author', 'publisher', 'rating', 'rank', 'categories', 'description', 'year']
     __dataframe: pd.DataFrame
     __data_retriever: DataRetriever
 
@@ -17,12 +17,20 @@ class Preprocessing:
         self.__dataframe = dataframe
         self.__data_retriever = DataRetriever()
 
-    def process(self) -> None:
+    def process(self, processed_filename: str) -> None:
         for column in self.__COLUMNS__:
             if column not in self.__dataframe.columns:
                 self.__dataframe[column] = None
 
-        self.__dataframe = self.__dataframe.apply(self.__process_row, axis=1)
+        rows = []
+        idx = 1
+        for index, row in self.__dataframe.iterrows():
+            rows.append(self.__process_row(row))
+            if idx % 1000 == 0:
+                pd.DataFrame(rows).to_csv(processed_filename, index=False)
+            idx += 1
+
+        pd.DataFrame(rows).to_csv(processed_filename, index=False)
 
     def get_df(self) -> pd.DataFrame:
         return self.__dataframe
@@ -122,41 +130,17 @@ class Preprocessing:
         return authors.map(_clean_author).str.split(';').explode().str.strip().unique()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
-        if str(row['isbn13']) == 'nan' or str(row['isbn10']) == 'nan':
-            author = row['author']
-            if str(author) == 'nan':
-                author = None
+        author = row['author']
+        if not author:
+            author = None
 
-            data: dict | False = self.__data_retriever.get_json_from_title_and_author(row['title'], author)
-
-            if not data or data['totalItems'] == 0:
-                return row
-
-            try:
-                industry_identifiers: list[dict[str, str]] = data['items'][0]['volumeInfo']['industryIdentifiers']
-            except KeyError:
-                return row
-            isbn13 = [
-                identifier['identifier'] for identifier in industry_identifiers
-                if identifier['type'].lower() == 'isbn_13'
-            ]
-
-            if len(isbn13) > 0:
-                row['isbn13'] = isbn13[0]
-
-            isbn10 = [
-                identifier['identifier'] for identifier in industry_identifiers
-                if identifier['type'].lower() == 'isbn_10'
-            ]
-
-            if len(isbn10) > 0:
-                row['isbn10'] = isbn10[0]
-
-        data: dict | False = False
+        data: dict | False = self.__data_retriever.get_json_from_title_and_author(row['title'], author)
+        if not data:
+            return row
 
         # Check if any of the __COLUMNS__ are NONE in te row
         for column in self.__COLUMNS__:
-            if row[column] is None:
+            if column not in row or not row[column]:
                 search: str = column
                 if search == 'author':
                     search = 'authors'
@@ -190,14 +174,12 @@ class Preprocessing:
 
 
 if __name__ == '__main__':
-    processed_filename = 'datasets/processed.csv'
+    processed_filename = 'datasets/processed_nonbestsellers.csv'
     author_info_filename = 'datasets/author_info2.csv'
     if not os.path.exists(processed_filename):
-        df: pd.DataFrame = pd.read_csv('datasets/combined_filtered.csv')
+        df: pd.DataFrame = pd.read_csv('datasets/non_best_selling_books_filtered.csv')
         preprocessing: Preprocessing = Preprocessing(df)
-        preprocessing.process()
-        df = preprocessing.get_df()
-        df.to_csv(processed_filename, index=False)
+        preprocessing.process(processed_filename)
     else:
         df: pd.DataFrame = pd.read_csv(processed_filename)
         preprocessing: Preprocessing = Preprocessing(df)
