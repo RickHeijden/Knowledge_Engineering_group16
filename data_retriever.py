@@ -19,7 +19,8 @@ class DataRetriever:
             base_api_link: str = "https://www.googleapis.com/books/v1/volumes"
             params: dict[str, str] = {
                 'q': f"isbn:{isbn}",
-                'langRestrict': 'en'
+                'langRestrict': 'en',
+                'projection': 'lite'
             }
 
             response: Response = requests.get(base_api_link, params=params)
@@ -42,12 +43,14 @@ class DataRetriever:
             if author is None:
                 params: dict[str, str] = {
                     'q': f"intitle:{title}",
-                    'langRestrict': 'en'
+                    'langRestrict': 'en',
+                    'projection': 'lite'
                 }
             else:
                 params: dict[str, str] = {
                     'q': f"intitle:{title}+inauthor:{author}",
-                    'langRestrict': 'en'
+                    'langRestrict': 'en',
+                    'projection': 'lite'
                 }
 
             response: Response = requests.get(base_api_link, params=params)
@@ -75,15 +78,16 @@ class DataRetriever:
                 params = {
                     'q': f"inauthor:{author_name}",
                     'langRestrict': 'en',
-                    'startIndex': start_index
+                    'startIndex': start_index,
+                    'projection': 'lite'
                 }
                 response = requests.get(base_api_link, params=params)
                 if response.status_code != 200:
                     return []
                 data = response.json()
 
-                if 'totalItems' not in data:
-                    return []
+                if 'totalItems' not in data or 'items' not in data:
+                    return books
                 if not total_items:
                     total_items = data['totalItems']
                 books.extend(data['items'])
@@ -173,4 +177,4 @@ class DataRetriever:
 
 if __name__ == '__main__':
     data_retriever = DataRetriever()
-    print(data_retriever.get_author_info_from_dbpedia('JJ Smith'))
+    print(data_retriever.get_books_from_author('JJ Smith'))

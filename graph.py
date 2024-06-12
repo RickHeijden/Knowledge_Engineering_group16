@@ -6,7 +6,8 @@ from rdflib.namespace import RDF, FOAF
 def _clean_author(author: str) -> str:
     if type(author) is not str:
         return ''
-    return author.replace('(Author)', '').replace('(Narrator)', '').replace('(Illustrator)', '').replace(
+    return author.replace('(Author)', '').replace('(Narrator)', '').replace('Narrator)', '').replace('(Illustrator)',
+                                                                                                     '').replace(
         '(Author;Narrator)', '')
 
 
@@ -32,7 +33,7 @@ class KnowledgeGraph:
         self.graph.bind("schema", self.SCHEMA)
         self.graph.bind("foaf", FOAF)
 
-    def add_book(self, entry: pd.Series):
+    def add_book(self, entry: pd.Series, is_bestseller: bool):
         # Column values: title, author, isbn13, isbn10, rank, rating, description, amazon_product_url, publisher, categories, year
 
         if not entry['isbn13']:
@@ -47,11 +48,8 @@ class KnowledgeGraph:
                 author_name = author_name.strip()
                 author_uri = URIRef(self.SCHEMA[_url_encode_author(author_name)])
 
-                if not (author_uri, RDF.type, FOAF.Person) in self.graph:
-                    # print(f"Author {author_name} not found in the graph")
-                    return
-
-                self.graph.add((book_uri, self.SCHEMA.author, author_uri))
+                if (author_uri, RDF.type, FOAF.Person) in self.graph:
+                    self.graph.add((book_uri, self.SCHEMA.author, author_uri))
 
         self.graph.add((book_uri, self.SCHEMA.Value, Literal(isbn)))  # Add isbn as identifier
         self.graph.add((book_uri, RDF.type, self.SCHEMA.Book))
@@ -60,14 +58,20 @@ class KnowledgeGraph:
         self.add_property(book_uri, self.SCHEMA.Rating, entry['rating'])
         self.add_property(book_uri, self.SCHEMA.Description, entry['description'])
         self.add_property(book_uri, self.SCHEMA.AmazonProductUrl, entry['amazon_product_url'])
+        self.graph.add((book_uri, self.SCHEMA.isBestseller, Literal(is_bestseller)))
 
         if entry['categories']:
-            categories = entry['categories'][1:-1].replace('"', '').split(',')
+            categories = entry['categories']
+            if categories.startswith('[') and categories.endswith(']'):
+                categories = categories[1:-1].replace('"', '').split(',')
+            else:
+                categories = categories.split(',')
 
             for category in categories:
+                category = category.strip()
                 if category == 'Books':
                     continue  # Trivial
-                category_uri = URIRef(self.SCHEMA[category.strip().replace(' ', '_')])
+                category_uri = URIRef(self.SCHEMA[category.replace(' ', '_')])
                 if not (category_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
                     self.graph.add((category_uri, RDF.type, self.SCHEMA.Genre))
                     self.graph.add((category_uri, self.SCHEMA.Value, Literal(category)))
@@ -75,7 +79,7 @@ class KnowledgeGraph:
                 self.graph.add((book_uri, self.SCHEMA.genre, category_uri))
 
         if entry['publisher']:
-            publisher_uri = URIRef(self.SCHEMA[entry['publisher'].strip().replace(' ', '_')])
+            publisher_uri = URIRef(self.SCHEMA['publ_' + entry['publisher'].strip().replace(' ', '_')])
 
             if not (publisher_uri, RDF.type, self.SCHEMA.Publisher) in self.graph:
                 self.graph.add((publisher_uri, RDF.type, self.SCHEMA.Publisher))
@@ -139,7 +143,7 @@ class KnowledgeGraph:
 
         if entry['birth_country']:
             birth_country = entry['birth_country'].strip()
-            country_uri = URIRef(self.SCHEMA['country_' + birth_country.strip().replace(' ', '_')])
+            country_uri = URIRef(self.SCHEMA['country_' + birth_country.replace(' ', '_')])
             if not (country_uri, RDF.type, self.SCHEMA.Country) in self.graph:
                 self.graph.add((country_uri, RDF.type, self.SCHEMA.Country))
                 self.graph.add((country_uri, self.SCHEMA.Value, Literal(birth_country)))
@@ -163,15 +167,17 @@ class KnowledgeGraph:
         for index, row in df.iterrows():
             self.add_author(row)
 
-    def load_books_csv(self, file: str):
+    def load_books_csv(self, file: str, is_bestseller: bool):
         df = pd.read_csv(file).fillna(False)
         for index, row in df.iterrows():
-            self.add_book(row)
+            self.add_book(row, is_bestseller)
 
 
 if __name__ == '__main__':
     kg = KnowledgeGraph()
     kg.load_authors_csv('datasets/author_info2.csv')
-    kg.load_books_csv('datasets/processed.csv')
-    kg.graph.serialize('graph.rdf', format='xml')
-    print("Graph saved as graph.rdf")
+    kg.load_books_csv('datasets/processed_combined_filtered_enriched.csv', True)
+    kg.load_books_csv('datasets/processed_nonbestsellers.csv', False)
+    # kg.load_books_csv('datasets/non_bestseller_processed.csv', False)
+    # kg.graph.serialize('graph.rdf', format='xml')
+    # print("Graph saved as graph.rdf")
