@@ -197,16 +197,6 @@ class Preprocessing:
                 elif search == 'rating' or search == 'rank':
                     continue
 
-                if not data:
-                    isbn = row['isbn13']
-                    if isbn is None:
-                        isbn = row['isbn10']
-
-                    data = self.__data_retriever.get_json_from_isbn(isbn)
-
-                if not data:
-                    continue
-
                 if data['totalItems'] > 0:
                     volume_info: dict = data['items'][0]['volumeInfo']
                 else:
