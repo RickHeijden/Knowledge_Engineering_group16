@@ -4,13 +4,28 @@ from cleaner import clean_authors
 from data_retriever import DataRetriever
 
 
-def _clean_author(author: str) -> str:
+def _stringify_author(author: str) -> str:
+    """
+    Convert the author to a string.
+
+    @param author: The author to convert.
+    @return: The author as a string.
+    """
     return author if type(author) is str else ''
 
 
 class Preprocessing:
+    """
+    Class that preprocesses the data.
+    """
+
+    # The columns to keep in the dataframe
     __COLUMNS__: list[str] = ['title', 'author', 'publisher', 'rating', 'rank', 'categories', 'description', 'year']
+
+    # The dataframe to process
     __dataframe: pd.DataFrame
+
+    # The data retriever
     __data_retriever: DataRetriever
 
     def __init__(self, dataframe: pd.DataFrame) -> None:
@@ -18,10 +33,17 @@ class Preprocessing:
         self.__data_retriever = DataRetriever()
 
     def process(self, processed_filename: str) -> None:
+        """
+        Process the dataframe and save it to a CSV file.
+
+        @param processed_filename: The name of the file to save the processed dataframe to.
+        """
+        # Add the columns that are not in the dataframe
         for column in self.__COLUMNS__:
             if column not in self.__dataframe.columns:
                 self.__dataframe[column] = None
 
+        # Process the rows and save them in batches of 1000 to the CSV file
         rows = []
         idx = 1
         for index, row in self.__dataframe.iterrows():
@@ -33,9 +55,22 @@ class Preprocessing:
         pd.DataFrame(rows).to_csv(processed_filename, index=False)
 
     def get_df(self) -> pd.DataFrame:
+        """
+        Get the dataframe.
+
+        @return: The dataframe.
+        """
         return self.__dataframe
 
     def create_author_info(self, path: str) -> None:
+        """
+        Create a CSV file with the author information.
+
+        This method retrieves the authors from the books csv and adds the author information from DBpedia and saves it to a CSV file.
+
+        @param path: The path to the CSV file to save.
+        """
+
         # If file does not exist, create it and add CSV column headers.
         if not os.path.exists(path):
             with open(path, "w") as file:
@@ -62,7 +97,9 @@ class Preprocessing:
                     genres: str,
                     properly_processed: bool,
             ):
-                """Write a line to the CSV file."""
+                """
+                Write a line to the CSV file.
+                """
                 file.write(
                     ",".join(
                         map(
@@ -125,11 +162,22 @@ class Preprocessing:
                 )
 
     def get_authors(self) -> list[str]:
+        """
+        Get the authors from the dataframe.
+
+        @return: The authors.
+        """
         authors = clean_authors(self.__dataframe['author'])
 
-        return authors.map(_clean_author).str.split(';').explode().str.strip().unique()
+        return authors.map(_stringify_author).str.split(';').explode().str.strip().unique()
 
     def __process_row(self, row: pd.Series) -> pd.Series:
+        """
+        Process a row by adding all the missing information.
+
+        @param row: The row to process.
+        @return: The processed row.
+        """
         author = row['author']
         if not author:
             author = None
