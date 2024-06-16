@@ -3,10 +3,24 @@ import re
 
 
 def clean_authors(authors_series: pd.Series):
+    """
+    Cleans the authors in the authors_series by removing special characters, titles, and other unwanted strings.
+
+    @param authors_series: The series of authors to clean.
+
+    @return: The cleaned authors.
+    """
     return authors_series.apply(cleaning_authors).apply(split_authors).apply(formalize_initials)
 
 
-def cleaning_authors(author: str):
+def cleaning_authors(author: str) -> str:
+    """
+    Cleans the author string by removing special characters, titles, and other unwanted strings.
+
+    @param author: The author string to clean.
+
+    @return: The cleaned author string.
+    """
     if pd.isnull(author):
         return author
 
@@ -186,12 +200,19 @@ def cleaning_authors(author: str):
     return author
 
 
-def split_authors(author, words_to_split_author=None):
-    if words_to_split_author is None:
-        words_to_split_author = [' and ', ',', '&', ';with', ' with ', ';']
+def split_authors(author: str, words_to_split_author: list[str | None] | None = None) -> str:
+    """
+    Splits the author string by the words in words_to_split_author.
 
+    @param author: The author string to split.
+    @param words_to_split_author: The words to split the author string by.
+    @return: The author string split by the words in words_to_split_author.
+    """
     if pd.isnull(author):
         return author
+
+    if words_to_split_author is None:
+        words_to_split_author = [' and ', ',', '&', ';with', ' with ', ';']
 
     # Start with the original author string
     authors = [author]
@@ -204,7 +225,13 @@ def split_authors(author, words_to_split_author=None):
     return ';'.join([a.strip().strip('.,&;').strip() for a in authors if a.strip() != ''])
 
 
-def formalize_initials(author):
+def formalize_initials(author: str) -> str:
+    """
+    Formalizes the initials of the author string by making sure that each initial is followed by a dot and a space.
+
+    @param author: The author string to formalize the initials of.
+    @return: The author string with formalized initials.
+    """
     if pd.isnull(author):
         return author
 
