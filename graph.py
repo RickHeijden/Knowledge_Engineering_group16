@@ -3,6 +3,8 @@ from rdflib import Graph, URIRef, Literal, Namespace
 from rdflib.namespace import RDF, FOAF
 from urllib.parse import quote_plus
 
+from utils.category_mappings import dict_category, dict_subcategory
+
 
 def _clean_author(author: str) -> str:
     if type(author) is not str:
@@ -83,6 +85,15 @@ class KnowledgeGraph:
                 if not (category_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
                     self.graph.add((category_uri, RDF.type, self.SCHEMA.Genre))
                     self.add_property(category_uri, self.SCHEMA.Value, category)
+                    mapping_val = category.replace(' ', '').lower()
+                    for key, value in dict_category.items():
+                        if mapping_val in value:
+                            self.graph.add((category_uri, self.SCHEMA.genreCategory, URIRef(self.SCHEMA[quote_plus(key)])))
+                            break
+                    for key, value in dict_subcategory.items():
+                        if mapping_val in value:
+                            self.graph.add((category_uri, self.SCHEMA.genreSubcategory, URIRef(self.SCHEMA[quote_plus(key)])))
+                            break
 
                 self.graph.add((book_uri, self.SCHEMA.genre, category_uri))
 
@@ -188,6 +199,15 @@ class KnowledgeGraph:
                 if not (genre_uri, RDF.type, self.SCHEMA.Genre) in self.graph:
                     self.graph.add((genre_uri, RDF.type, self.SCHEMA.Genre))
                     self.add_property(genre_uri, self.SCHEMA.Value, genre)
+                    mapping_val = genre.replace(' ', '').lower()
+                    for key, value in dict_category.items():
+                        if mapping_val in value:
+                            self.graph.add((genre_uri, self.SCHEMA.genreCategory, URIRef(self.SCHEMA[quote_plus(key)])))
+                            break
+                    for key, value in dict_subcategory.items():
+                        if mapping_val in value:
+                            self.graph.add((genre_uri, self.SCHEMA.genreSubcategory, URIRef(self.SCHEMA[quote_plus(key)])))
+                            break
 
                 self.graph.add((author_uri, self.SCHEMA.genre, genre_uri))
 
@@ -201,9 +221,18 @@ class KnowledgeGraph:
         for index, row in df.iterrows():
             self.add_book(row, is_bestseller)
 
+    def create_top_categories(self):
+        genres = list(dict_subcategory.keys())
+        genres.extend(dict_category.keys())
+        for genre in genres:
+            genre_uri = URIRef(self.SCHEMA[quote_plus(genre)])
+            self.graph.add((genre_uri, RDF.type, self.SCHEMA.Genre))
+            self.add_property(genre_uri, self.SCHEMA.Value, genre)
+
 
 if __name__ == '__main__':
     kg = KnowledgeGraph()
+    kg.create_top_categories()
     kg.load_authors_csv('datasets/author_info2.csv')
     kg.load_books_csv('combiner/processed_combined_filtered_enriched.csv', True)
     kg.load_books_csv('datasets/processed_nonbestsellers.csv', False)
