@@ -3,13 +3,13 @@ from cleaner import clean_authors
 from combiner import *
 
 
-def integrate_dataframes():
+def integrate_dataframes(dataset_directory: str):
     """
     Integrate the dataframes into a single dataframe.
 
     @return: The integrated dataframe.
     """
-    generation = GenerateDataframes(directory)
+    generation = GenerateDataframes(dataset_directory)
     df_file1, df_file2, df_file3, df_file4 = generation.generate_dataframes()
 
     dataframe = combine_dataframes(df_file1, df_file2, df_file3, df_file4)
@@ -30,7 +30,7 @@ def integrate_dataframes():
     dataframe = combine_on_title_author(dataframe)
     print(len(dataframe))
 
-    dataframe.to_csv(directory + 'combined.csv', index=False)
+    dataframe.to_csv(dataset_directory + 'combined.csv', index=False)
 
     return dataframe
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     # Check if combined.csv exists using os
     if not os.path.exists(directory + 'combined.csv'):
-        combined_dataframe = integrate_dataframes()
+        combined_dataframe = integrate_dataframes(directory)
     else:
         combined_dataframe = pd.read_csv('datasets/combined.csv')
 
