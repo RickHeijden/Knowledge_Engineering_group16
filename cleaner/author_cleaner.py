@@ -37,7 +37,7 @@ def cleaning_authors(author: str) -> str:
     author = re.sub(r'(?i)\bm\.?e?d\.?\b', '', author)
 
     # Remove any 'FACLM' (case-insensitive)
-    author = re.sub(r'(?i)faclm', '', author)
+    author = re.sub(r'(?i)\bfaclm\b', '', author)
 
     # Remove any 'Dr' or 'Dr.' (case-insensitive)
     if author.lower() != 'dr. seuss':
