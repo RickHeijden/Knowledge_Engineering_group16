@@ -11,12 +11,22 @@ Its usage comes after the dataset is built -> retriever.py
 
 
 def extract_isbn(book):
+    """
+    Extract the ISBN-13 and ISBN-10 from a book dictionary.
+    @param book: A dictionary representing a book
+    @return: A tuple containing the ISBN-13 and ISBN-10
+    """
     isbn13 = book.get('isbn13')
     isbn10 = book.get('isbn10')
     return isbn13, isbn10
 
 
 def fetch_additional_details(isbn):
+    """
+    Fetch additional details for a book using the Google Books API.
+    @param isbn: The ISBN of the book to fetch for
+    @return: A dictionary containing additional details for the book
+    """
     url = f'https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}'
     response = requests.get(url)
     if response.status_code == 200:
@@ -34,6 +44,11 @@ def fetch_additional_details(isbn):
 
 
 def load_intermediate_results(file_path):
+    """
+    Load intermediate results from a CSV file.
+    @param file_path: The path to the CSV file
+    @return: A DataFrame containing the intermediate results
+    """
     if os.path.exists(file_path):
         return pd.read_csv(file_path)
     print("Creating a new dataframe")
@@ -43,6 +58,31 @@ def load_intermediate_results(file_path):
 
 def save_intermediate_results(data, save_path):
     data.to_csv(save_path, index=False)
+
+
+def intermediate_processing(api_calls_count=None, start_time=None, enriched_books=None, final_results_path=None):
+    """
+    Print metrics and save intermediate results.
+    @param api_calls_count: Amount of API calls
+    @param start_time: Start time of the process
+    @param enriched_books: Enriched books list
+    @param final_results_path: Path to save the final results
+    @return: None
+    """
+    api_calls_count += 1
+
+    # Print metrics every 50 API calls
+    if api_calls_count % 50 == 0:
+        end_time = time.time()
+        duration_minutes = (end_time - start_time) / 60.0
+        api_calls_per_minute = api_calls_count / duration_minutes
+        print(f"{api_calls_count} API calls so far")
+        print(f"API calls per minute: {api_calls_per_minute:.2f}")
+
+    # Save intermediate results every 100 API calls
+    if api_calls_count % 100 == 0:
+        enriched_books_df = pd.DataFrame(enriched_books)
+        save_intermediate_results(enriched_books_df, final_results_path)
 
 
 if __name__ == '__main__':
@@ -86,20 +126,7 @@ if __name__ == '__main__':
                                                                         book['country_of_publication'])
 
                 # Track the number of API calls
-                api_calls_count += 1
-
-                # Print metrics every 50 API calls
-                if api_calls_count % 50 == 0:
-                    end_time = time.time()
-                    duration_minutes = (end_time - start_time) / 60.0
-                    api_calls_per_minute = api_calls_count / duration_minutes
-                    print(f"{api_calls_count} API calls so far")
-                    print(f"API calls per minute: {api_calls_per_minute:.2f}")
-
-                # Save intermediate results every 100 API calls
-                if api_calls_count % 100 == 0:
-                    enriched_books_df = pd.DataFrame(enriched_books)
-                    save_intermediate_results(enriched_books_df, final_results_path)
+                intermediate_processing(api_calls_count, start_time, enriched_books, final_results_path)
 
         enriched_books.append(book.to_dict())
 

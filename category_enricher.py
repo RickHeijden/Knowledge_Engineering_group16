@@ -1,16 +1,28 @@
 import pandas as pd
 import requests
-import os
 import time
+
+from non_best_selling_books.enricher import load_intermediate_results, save_intermediate_results, \
+    intermediate_processing
 
 
 def extract_isbn(book):
+    """
+    Extract ISBN-13 and ISBN-10 from the book data.
+    @param book: A dictionary representing a book
+    @return: A tuple containing the ISBN-13 and ISBN-10
+    """
     isbn13 = book.get('isbn13')
     isbn10 = book.get('isbn10')
     return isbn13, isbn10
 
 
 def fetch_categories_by_ISBN(ISBN):
+    """
+    Fetch categories for a book using the Open Library API.
+    @param ISBN: The ISBN of the book to fetch categories for
+    @return: A list of categories for the book
+    """
     url = f'http://openlibrary.org/isbn/{ISBN}.json'
     response = requests.get(url)
 
@@ -30,19 +42,6 @@ def fetch_categories_by_ISBN(ISBN):
         return subjects
 
     return []
-
-
-def load_intermediate_results(file_path):
-    if os.path.exists(file_path):
-        return pd.read_csv(file_path)
-    print("Creating a new dataframe")
-    return pd.DataFrame(columns=['title', 'author', 'isbn13', 'isbn10', 'rating', 'description',
-                                 'publisher', 'categories', 'country_of_publication'])
-
-
-def save_intermediate_results(data, save_path):
-    data.to_csv(save_path, index=False)
-
 
 if __name__ == '__main__':
     best_selling_books_path = './datasets/combined_filtered.csv'
@@ -79,20 +78,7 @@ if __name__ == '__main__':
                     book['categories'] = ', '.join(categories_fetched)
                     print("Updated categories of " + book.get('title') + " to " + str(categories_fetched))
                 # Track the number of API calls
-                api_calls_count += 1
-
-                # Print metrics every 50 API calls
-                if api_calls_count % 50 == 0:
-                    end_time = time.time()
-                    duration_minutes = (end_time - start_time) / 60.0
-                    api_calls_per_minute = api_calls_count / duration_minutes
-                    print(f"{api_calls_count} API calls so far")
-                    print(f"API calls per minute: {api_calls_per_minute:.2f}")
-
-                # Save intermediate results every 100 API calls
-                if api_calls_count % 100 == 0:
-                    enriched_books_df = pd.DataFrame(enriched_books)
-                    save_intermediate_results(enriched_books_df, final_results_path)
+                intermediate_processing(api_calls_count, start_time, enriched_books, final_results_path)
 
         enriched_books.append(book.to_dict())
 
