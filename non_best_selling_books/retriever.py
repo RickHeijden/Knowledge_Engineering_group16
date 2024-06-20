@@ -16,11 +16,22 @@ After this, we can enrich the the dataset to have similar info as the best selli
 
 
 def extract_authors(file_path):
+    """
+    Extract authors from a CSV file.
+    @param file_path: The file path
+    @return: A list of authors
+    """
     authors_df = pd.read_csv(file_path)
     return authors_df['author'].tolist()
 
 
 def save_intermediate_results(data, save_path):
+    """
+    Save intermediate results to a CSV file.
+    @param data: The data to save
+    @param save_path: The path to save the data
+    @return: None
+    """
     # Ensure directory exists
     directory = os.path.dirname(save_path)
     if directory and not os.path.exists(directory):
@@ -29,6 +40,11 @@ def save_intermediate_results(data, save_path):
 
 
 def load_intermediate_results(file_path):
+    """
+    Load the intermediate results from a CSV file.
+    @param file_path: The path to the CSV file
+    @return: A DataFrame containing the intermediate results
+    """
     if os.path.exists(file_path):
         return pd.read_csv(file_path)
     return pd.DataFrame(columns=['title', 'author', 'isbn13', 'isbn10', 'rating', 'description',
@@ -36,6 +52,11 @@ def load_intermediate_results(file_path):
 
 
 def fetch_books_by_author(author):
+    """
+    Fetch books by a given author using the Open Library API.
+    @param author: The author to search for
+    @return: A list of books by the author
+    """
     url = f'http://openlibrary.org/search.json?author={author}'
     response = requests.get(url)
     if response.status_code == 200:
@@ -58,6 +79,12 @@ def fetch_books_by_author(author):
 
 
 def is_bestseller(book_to_check, best_selling_books_dict):
+    """
+    Check if a book is a best-seller based on the author and title.
+    @param book_to_check: The book to check
+    @param best_selling_books_dict: A dictionary of best-selling books
+    @return: True if the book is a best-seller, False otherwise
+    """
     best_selling_author = book_to_check.get('author_name')
     title = book_to_check.get('title').lower()  # Convert title to lowercase for case-insensitive comparison
     if isinstance(best_selling_author, list):
@@ -85,6 +112,12 @@ def is_bestseller(book_to_check, best_selling_books_dict):
 
 
 def filter_non_best_selling_books(author_books_to_filter, best_selling_books_dict):
+    """
+    Filter out the best-selling books from a list of books by an author.
+    @param author_books_to_filter: The list of books by the author
+    @param best_selling_books_dict: A dictionary of best-selling books
+    @return: A list of non-best-selling books
+    """
     non_best_selling_books_to_filter = []
     for auth_book in author_books_to_filter:
         if not is_bestseller(auth_book, best_selling_books_dict):
@@ -93,6 +126,11 @@ def filter_non_best_selling_books(author_books_to_filter, best_selling_books_dic
 
 
 def extract_best_selling_books(file_path):
+    """
+    Extract best-selling books from a CSV file.
+    @param file_path: The file path
+    @return: A dictionary of best-selling books by author
+    """
     best_selling_books_df = pd.read_csv(file_path)
     best_selling_books_dict = {}
     for _, row in best_selling_books_df.iterrows():
@@ -105,6 +143,11 @@ def extract_best_selling_books(file_path):
 
 
 def extract_isbn(book_to_extract_from):
+    """
+    Extract ISBN-13 and ISBN-10 from the book data.
+    @param book_to_extract_from: A dictionary representing a book
+    @return: A tuple containing the ISBN-13 and ISBN-10
+    """
     isbns = book_to_extract_from.get('isbn', [])
     if isinstance(isbns, list) and all(isinstance(isbn, str) for isbn in isbns):
         isbn13 = next((isbn for isbn in isbns if len(isbn) == 13), None)

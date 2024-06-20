@@ -8,20 +8,26 @@ import pandas as pd
 import os
 
 
-def extract_best_selling_books(file_path):
+def extract_best_selling_books(file_path: str) -> list[dict]:
+    """
+    @param file_path: The path to the CSV file containing the best-selling books.
+    @return: A list of dictionaries containing the best-selling books.
+    """
     best_selling_books_df = pd.read_csv(file_path)
-    best_selling_books = []
+    best_selling_books_to_extract = []
     for _, row in best_selling_books_df.iterrows():
-        best_selling_books.append({
+        best_selling_books_to_extract.append({
             'author': row['author'],
             'title': row['title']
         })
-    return best_selling_books
+    return best_selling_books_to_extract
 
 
 def create_author_book_dict(books):
     """
-    Create a dictionary where each author is mapped to a list of their books.
+    Create a dictionary mapping authors to their books.
+    @param books: A list of dictionaries containing books.
+    @return: A dictionary mapping authors to their books.
     """
     author_book_dict = {}
     for book in books:
@@ -35,7 +41,10 @@ def create_author_book_dict(books):
 
 def is_contained(title1, title2):
     """
-    Check if title1 is contained within title2 or vice versa.
+    Check if one title is contained in another.
+    @param title1: The first title.
+    @param title2: The second title.
+    @return: true if one title is contained in another, false otherwise.
     """
     return title1 in title2 or title2 in title1
 

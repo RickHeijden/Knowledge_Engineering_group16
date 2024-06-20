@@ -6,6 +6,11 @@ Good to use before fetching the non-best selling books from best selling authors
 
 
 def clean_csv(file_path, cleaned_file_path):
+    """
+    Clean a CSV file by removing lines that do not have the expected number of columns.
+    @param file_path: The path to the CSV file to clean
+    @param cleaned_file_path: The path to save the cleaned data
+    """
     with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
 

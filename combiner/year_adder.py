@@ -2,6 +2,9 @@ import pandas as pd
 
 
 def add_year_from_processed():
+    """
+    Add the 'year' column from the 'processed.csv' file to the 'combined_filtered_enriched.csv' file.
+    """
     # Step 1: Read the CSV files
     processed_df = pd.read_csv('../datasets/processed.csv')
     combined_filtered_enriched_df = pd.read_csv('../datasets/combined_filtered_enriched.csv')

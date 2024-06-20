@@ -4,6 +4,11 @@ from utils.isbn13_country_mappings import get_country_from_isbn
 
 
 def add_missing_data_according_to_isbn(attribute='publisher'):
+    """
+    Add missing data to the combined.csv file based on the ISBN13 field.
+    @param attribute: The attribute to add missing data for
+    @return: None
+    """
     # https://e-service.nlt.go.th/File/DetailByName?fileName=E%3A%5C_files%5CFolio.Test%5CAdminDownload%5C0cc018b8-9ad6-44bd-969e-a2f95c043aef.pdf
     # ISBN13 structure
     # 978-1-56619-909-4
