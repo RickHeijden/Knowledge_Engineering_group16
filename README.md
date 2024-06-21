@@ -235,3 +235,13 @@ country_nationalities = {
     "Zambia": "Zambian",
     "Zimbabwe": "Zimbabwean"
 }
+
+## Generating the datasets from scratch
+### Initially
+ - Have a directory called 'datasets'
+ - Download the datasets from 
+   - https://www.kaggle.com/datasets/dhruvildave/new-york-times-best-sellers/data
+   - https://www.kaggle.com/datasets/cmenca/new-york-times-hardcover-fiction-best-sellers
+   - https://www.kaggle.com/datasets/jiyoungkimpf/amazon-best-sellers-of-20102020-top-100-books
+   - https://www.kaggle.com/datasets/joebeachcapital/amazon-books
+ - Unzip the files and place them in the 'datasets' directory
