@@ -200,7 +200,6 @@ if __name__ == '__main__':
 
         for book in non_best_selling:
             # If it's already in the data, skip it
-            # If it's already in the data, skip it
             if not non_best_selling_books_df[
                 (non_best_selling_books_df['title'] == book.get('title')) &
                 (non_best_selling_books_df['author'] == author)
